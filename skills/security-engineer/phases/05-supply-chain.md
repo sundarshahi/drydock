@@ -93,6 +93,8 @@ Review the build pipeline for supply chain attack vectors:
 - Are artifact registries (npm, Docker, Maven) using authentication and access control?
 - Is there SLSA provenance generation?
 
+**Reconcile boundary:** security-engineer AUDITS the supply chain and produces `sbom.json` (the authoritative dependency/license/vuln inventory); **devops** IMPLEMENTS SLSA provenance generation + cosign artifact signing in the pipeline. This phase verifies provenance/signing exist and flags their absence as a finding — it does not configure the pipeline; devops reconciles against this audit.
+
 ### Step 6: Check Frontend Supply Chain
 
 For frontend/client-side code:

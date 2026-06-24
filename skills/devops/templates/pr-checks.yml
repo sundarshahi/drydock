@@ -1,0 +1,83 @@
+# .github/workflows/pr-checks.yml — PR-only required gates.
+# patch-coverage, frontend perf (lhci + size-limit), k6 baseline is in cd-staging,
+# stale-flag, docs-examples, markdownlint/Vale. Budgets READ FROM performance-budget.yaml.
+# Every job here is a REQUIRED check (see scripts/setup-branch-protection.sh). No `|| true`.
+name: pr-checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write   # patch-coverage + size-limit comment
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Patch-coverage: NEW/changed lines must hit the threshold. NO `|| true`. ──
+  patch-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with: { fetch-depth: 0 }
+      - run: make setup
+      - run: make test
+      - name: diff-cover patch coverage (required check)
+        run: |
+          set -euo pipefail
+          MIN="${{ vars.PATCH_COVERAGE_MIN || '<COVERAGE_MIN>' }}"
+          make patch-coverage PATCH_COVERAGE_MIN="$MIN"   # exits non-zero below threshold
+
+  # ── Frontend perf budget. Thresholds READ FROM performance-budget.yaml, never hardcoded. ──
+  frontend-perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - run: make setup
+      - run: make build-frontend
+      - name: Lighthouse CI (frontend/lighthouserc.json reads the budget)
+        uses: treosh/lighthouse-ci-action@2f8dda6cf4de7d73b29853c3f29e73a01e297bd8 # v12.1.0
+        with:
+          configPath: ./frontend/lighthouserc.json   # assertions derive from performance-budget.yaml
+          uploadArtifacts: true
+      - name: size-limit (bundle budget — FAILS on breach)
+        uses: andresz1/size-limit-action@dd31dce7dcc72a042919e290383de4c4d6f0c8fc # v1.8.0
+        with:
+          # frontend/.size-limit.json `limit` values are generated FROM performance-budget.yaml bundle.*
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          script: make size-limit   # exits non-zero past budget
+
+  # ── Stale / unregistered feature flags. Fails on flags past removal_by or not in registry. ──
+  stale-flags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - run: make setup
+      - name: Stale-flag gate (reads config/feature-flags.yaml)
+        run: make flags-check   # fail: flag past removal_by OR a flag in code absent from registry
+
+  # ── Docs examples actually run; prose is linted. ──
+  docs-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - run: make setup
+      - name: Extract + execute fenced code blocks from docs
+        run: make docs-examples   # tangles ```fenced``` blocks and runs them; non-zero on failure
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@db43aef879112c3119a410d69f66701e0d530809 # v17.0.0
+        with: { globs: "docs/**/*.md" }
+      - name: Vale prose lint
+        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03a0ecdf63b76 # v2.1.1
+        with: { files: docs }
+
+  # ── Re-lint the pipelines on the PR (mirrors ci.yml lint-pipelines as a required PR check). ──
+  lint-pipelines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: raven-actions/actionlint@3a24062651993d40fed1019b58ac6fdd36a67079 # v2.0.0
+      - uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with: { recursive: true, failure-threshold: error }

@@ -17,6 +17,9 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/security-defaults.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/architecture-boundaries.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
 
@@ -225,7 +228,11 @@ The skill supports AWS (SDK v3, LocalStack), GCP (@google-cloud/*, emulators), A
 | Ignoring graceful shutdown | Register SIGTERM handler. Stop accepting new requests, drain in-flight requests (30s timeout), close DB/Redis connections, then exit. |
 | Generating types manually | DTOs come from OpenAPI codegen. Proto types come from protoc. Never hand-write what can be generated. |
 | Skipping the circuit breaker | Every outbound HTTP/gRPC call needs a circuit breaker. One slow dependency should not cascade to all services. |
-| Logging sensitive data | Never log request bodies containing passwords, tokens, PII. Redact sensitive fields in the logging middleware. |
+| Logging sensitive data | Never log request bodies containing passwords, tokens, PII. Wire the default deny-list (authorization, cookie, password, token, secret, ssn, credit_card, request/response bodies) into the logger redaction layer (pino redact / structlog processor / logback masking). Never log a full request body at `info`. |
+| Logging to files / rotation | Logs go to **stdout/stderr ONLY** (12-Factor XI). No file transports, no rotation, no `LOG_FILE`. The platform ships stdout. |
+| In-process / local-disk state | Processes are **stateless** (12-Factor VI). No in-memory or local-disk session/upload/temp state, no sticky sessions — push to Redis / object store. |
+| Bespoke error envelope | Errors are **RFC 9457 problem+json** (`application/problem+json`) `$ref`'ing the shared `Problem` schema, mapped through the generated error-catalog module — never a hand-rolled `{code,message,details}` shape. |
+| Telemetry as an afterthought | OpenTelemetry init from `libs/shared/observability/` is the **FIRST import** of the entrypoint; RED/USE instruments + `/metrics` use the EXACT names in `observability-contract.md`. |
 | Cache without invalidation strategy | Every cache write must have a TTL. Every data mutation must invalidate the relevant cache key. Document the strategy per entity. |
 | Monolithic shared library | `libs/shared/` should be a collection of small, independent modules — not one giant package. Each module has its own tests. |
 | No `.env.example` | Always commit `.env.example` with placeholder values. Never commit `.env` or `.env.development`. Add to `.gitignore`. |

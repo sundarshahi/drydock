@@ -8,6 +8,13 @@ Design and implement the data pipeline layer — ETL/ELT architecture, data ware
 
 Read Phase 1 audit from `analysis/system-audit.md` for data flow maps and analytics gaps. Read Phase 3 metrics schema from `experiments/framework/metrics-schema.md` for events the pipeline must ingest.
 
+## Security Defaults (this phase generates ingestion/ETL code — obey `security-defaults.md`)
+
+- **Parameterized queries ONLY** in every dbt model, ETL transform, and warehouse query — zero string-concatenated SQL with event/user input.
+- **No secrets in pipeline configs.** Warehouse/broker/connector credentials come from env/secret-manager; commit `.env.example` key names only; never log connection strings or tokens.
+- **PII handling:** anonymize/pseudonymize PII at ingestion (before it lands in raw), enforce it as a Critical data-quality check; the LLM-usage mart and experiment-metrics mart carry no raw prompts/responses containing PII or secrets, and **LLM-derived/model-output columns are treated as untrusted** — validated/typed, never interpolated into SQL or rendered raw in a dashboard.
+- **SSRF allowlist** any connector/webhook whose source URL is user/config-influenced.
+
 ## Workflow
 
 ### Step 1: Event Schema Design
@@ -82,11 +89,12 @@ Before proceeding to Phase 5, verify:
 - [ ] Warehouse schema includes raw, staging, and marts layers
 - [ ] Data quality checks at every pipeline stage (non-null, freshness, uniqueness, range, volume)
 - [ ] Dashboard specs cover all key stakeholder groups
-- [ ] All SQL compatible with target warehouse (confirmed with user)
+- [ ] All SQL compatible with target warehouse (confirmed with user) and parameterized (no concatenated user/event input)
 - [ ] Pipeline error handling includes dead letter queues and alerting
+- [ ] `security-defaults checklist passes` — parameterized queries only, secrets from env/secret-manager (never logged), PII anonymized at ingestion, model-output columns treated as untrusted, SSRF allowlist on connector URLs
 
 > **GATE: Present data pipeline architecture. Wait for user approval before proceeding.**
 
 ## Quality Bar
 
-Every pipeline must have SLAs for freshness and completeness. "The data is updated regularly" is not acceptable — "The LLM usage mart refreshes every 2 hours with a freshness SLA of 3 hours, completeness target of 99.5%, and an automated alert if any quality check fails" is acceptable.
+Every pipeline must have SLAs for freshness and completeness, and `security-defaults checklist passes`. "The data is updated regularly" is not acceptable — "The LLM usage mart refreshes every 2 hours with a freshness SLA of 3 hours, completeness target of 99.5%, and an automated alert if any quality check fails" is acceptable. A deferred security item is logged as an explicit HARDEN hand-off, never silently skipped.

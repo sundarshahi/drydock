@@ -19,6 +19,7 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/compliance-protocol.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use smart_outline before full Read.
@@ -35,6 +36,10 @@ Read engagement mode and adapt interview depth:
 | **Standard** | 3-5 questions. Current behavior. Covers problem, success metrics, constraints, scope, references. |
 | **Thorough** | 5-8 questions. Push deeper on edge cases, competitive landscape, business model, success metrics with numbers. Challenge vague answers more aggressively. |
 | **Meticulous** | 8-12 questions across multiple rounds. Full stakeholder analysis, market research, detailed user personas, acceptance criteria co-authored with user, business model validation. |
+
+### Always-Resolved Compliance Scope (every mode, never gated to Thorough/Meticulous)
+
+Regardless of engagement mode — including Express — the **Compliance & Data Classification** discovery question (see Phase 1) is ALWAYS asked, and a compliance scope is ALWAYS resolved into the BRD. It is never dropped to save a question, because solution-architect, security-engineer, and compliance-officer READ the BRD scope and will design (or fail to design) the wrong controls if it is absent. In Express, you still ask the single discovery question (one `AskUserQuestion`) — you compress everything else, not this. If the user is unsure, default to the **conservative in-scope set** and flag for compliance-officer confirmation; never silently scope to "none". Log on resolution: `✓ Compliance scope resolved — {frameworks | none, with reason} (source: data-type/segment answers)`.
 
 ## Progress Output
 
@@ -141,6 +146,8 @@ Ask ONLY what's absolutely needed to write a BRD:
 2. **What's the most important thing it must do?** — Core feature, not full scope
 3. **Anything it must NOT do?** — Only if scope seems ambiguous
 
+PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — it is asked even in Express; you compress everything else, not this.
+
 Auto-fill gaps from web research. Accept reasonable defaults. Move to Phase 2 fast.
 
 ### Standard Mode (3-5 questions)
@@ -152,6 +159,8 @@ Current behavior — sharp, focused questions:
 3. **What are the constraints?** — Timeline, tech stack, integrations, budget?
 4. **What's out of scope?** — What should this NOT do? (Prevent scope creep early)
 5. **Any existing patterns?** — Competitors, references, inspiration?
+
+PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — asked in this and every mode.
 
 ### Thorough Mode (5-8 questions)
 
@@ -178,6 +187,62 @@ Thorough questions PLUS:
 14. **What's v2?** — Not to build now, but to ensure v1 architecture doesn't block v2
 
 Co-author acceptance criteria with the user — present draft criteria and iterate until both sides agree on what "done" means.
+
+### Compliance & Data Classification Discovery (MANDATORY — ALL modes)
+
+This question is **asked in every engagement mode**, including Express, and is **non-skippable**. It is the deterministic input to the product-signals → frameworks map in `compliance-protocol.md` (loaded above). Do NOT recall regulatory text from memory here — you are only capturing product SIGNALS (what data, where, for whom); the compliance-officer/solution-architect verify specific control ids and statutory clocks live later. If a polymath context package already captured these signals, confirm them in one question rather than re-asking.
+
+Ask with `AskUserQuestion` (structured options, never open-ended). All three questions are `multiSelect: true` where data/geography can stack:
+
+```
+AskUserQuestion(questions=[
+  {
+    "question": "What kinds of regulated data will this product handle? (select all that apply — when unsure, over-select; we scope conservatively)",
+    "header": "Regulated Data",
+    "multiSelect": true,
+    "options": [
+      {"label": "Health / PHI", "description": "Patient, treatment, diagnosis, or treatment-payment-operations data → signals HIPAA"},
+      {"label": "Cardholder / PAN", "description": "We store, process, or transmit payment card numbers → signals PCI-DSS"},
+      {"label": "EU personal data", "description": "Personal data of people in the EU/EEA, or we monitor EU subjects → signals GDPR"},
+      {"label": "California consumer data", "description": "Personal info of California consumers at the statutory threshold → signals CCPA/CPRA"},
+      {"label": "Government / federal", "description": "We sell to or serve a US federal agency → signals FedRAMP"},
+      {"label": "None of these / not sure", "description": "No obviously regulated data, or unsure — we default to the conservative scope and confirm with compliance"}
+    ]
+  },
+  {
+    "question": "Where do users live and where must data reside? (data residency / geography)",
+    "header": "Geography & Residency",
+    "multiSelect": true,
+    "options": [
+      {"label": "US only", "description": "Users and data stay in the US"},
+      {"label": "EU / EEA", "description": "EU users or EU data-residency requirement → reinforces GDPR"},
+      {"label": "California specifically", "description": "Significant California consumer base → reinforces CCPA/CPRA"},
+      {"label": "Global / multi-region", "description": "Worldwide users; residency varies by region"},
+      {"label": "Not sure yet", "description": "Geography undecided — default conservative, flag for confirmation"}
+    ]
+  },
+  {
+    "question": "Who is the customer / segment?",
+    "header": "Customer Segment",
+    "multiSelect": false,
+    "options": [
+      {"label": "B2B enterprise", "description": "Sold to companies; vendor-security questionnaires / customer trust → signals SOC 2 (and/or ISO 27001)"},
+      {"label": "B2B SMB / self-serve", "description": "Smaller business customers, mostly self-serve"},
+      {"label": "B2C consumer", "description": "Individual end users"},
+      {"label": "Mixed / not sure", "description": "Multiple segments or undecided — default conservative"}
+    ]
+  }
+])
+```
+
+**Resolving the scope (deterministic — apply `compliance-protocol.md`'s signals → frameworks map):**
+
+- Each present signal SCOPES IN its framework; signals stack (e.g. B2B-enterprise + EU personal data + PHI → SOC 2 + GDPR + HIPAA).
+- **Conservative-default rule:** if the user picks "not sure" / "none of these" / "mixed" on a question whose other answers already suggest regulated data — OR you have any ambiguous signal — scope the candidate framework **IN** and tag it `confirm-with-compliance`. Never resolve to an empty scope just because the user was unsure. An honest "scoped in pending confirmation" is correct; a silently dropped framework is the failure mode.
+- **No signal at all** (genuinely nothing regulated, US-only, B2C, no enterprise trust requirement) → record an explicit empty scope with the reason: `out of scope: <framework> — no <signal>`. An explicit empty scope is still a RESOLVED scope.
+- Do not over-scope a framework with zero supporting signal (phantom blocking gates) — but when in doubt between under- and over-scoping, prefer over-scoping + `confirm-with-compliance`.
+
+Record everything in the BRD's **Compliance & Data Classification** section (template below). Hand the resolved scope forward: the solution-architect's `Compliance & Controls` subsection and the compliance-officer's control-evidence map both READ it.
 
 ### Behavior (All Modes)
 
@@ -245,6 +310,32 @@ High-level description of what we're building.
 - Rule 1: [specific logic]
 - Rule 2: [specific logic]
 
+## Compliance & Data Classification
+<!-- ALWAYS present, every engagement mode. Captures the discovery answers + the
+     deterministic scope. Read by solution-architect (Compliance & Controls) and
+     compliance-officer (control-evidence map). Signals only — specific control ids,
+     article numbers, and statutory clocks are verified live downstream, not here. -->
+
+**Regulated data types:** [PHI | Cardholder/PAN | EU personal data | California consumer data | Government/federal | None] (multi-select, as answered)
+**Geography / data residency:** [US only | EU/EEA | California | Global/multi-region | Undecided]
+**Customer segment:** [B2B enterprise | B2B SMB | B2C consumer | Mixed]
+
+**Resolved in-scope frameworks** (deterministic signals → frameworks map, `compliance-protocol.md`):
+
+| Framework | Why scoped (signal) | Confidence |
+|-----------|---------------------|------------|
+| HIPAA | PHI / health data present | confirmed \| confirm-with-compliance |
+| PCI-DSS | cardholder data / PAN present | confirmed \| confirm-with-compliance |
+| GDPR | EU personal data / EU users | confirmed \| confirm-with-compliance |
+| CCPA/CPRA | California consumer data at threshold | confirmed \| confirm-with-compliance |
+| SOC 2 (/ ISO 27001) | B2B enterprise / customer-trust requirement | confirmed \| confirm-with-compliance |
+| FedRAMP | US federal customer | confirmed \| confirm-with-compliance |
+
+**Explicitly out of scope** (no signal — auditable, never silent):
+- `out of scope: <framework> — no <signal>` (e.g. `out of scope: HIPAA — no health data`)
+
+**Conservative-default note:** if the user was unsure, the conservative in-scope set is recorded above with confidence `confirm-with-compliance` and flagged for the compliance-officer to confirm. Compliance scope is NEVER silently resolved to "none" on an unsure answer.
+
 ## Out of Scope
 - What this feature does NOT include
 
@@ -270,6 +361,7 @@ Once the CEO approves the BRD (explicitly ask "Does this BRD look good to you? A
 - Mark status as "Approved"
 - Ensure acceptance criteria are clear enough to implement directly
 - Ensure business rules have no ambiguity
+- **Compliance gate (BLOCKING):** the BRD MUST contain a resolved **Compliance & Data Classification** section — either scoped frameworks, or an explicit `out of scope: <framework> — no <signal>`. Do NOT mark a BRD "Approved" with that section missing or with compliance left as a TODO. Any framework still tagged `confirm-with-compliance` is carried forward as an open item for the compliance-officer, not silently cleared.
 - If an implementation plan is needed, invoke `superpowers:writing-plans` (or write a basic task breakdown inline if that skill is unavailable)
 - If the user asks you to implement: redirect — "I'm your PM. Let me hand this off to engineering (invoke the appropriate implementation skill or let you drive the coding)."
 
@@ -328,3 +420,6 @@ You are a BRD verification agent. Your task:
 | BRD goes stale | Update on every interaction that affects requirements |
 | Writing code instead of requirements | You're a PM. Write specs, verify implementation. Don't code. |
 | Skipping research | If domain is unfamiliar, research first. Bad assumptions = bad requirements. |
+| Skipping the compliance question in Express to save time | It is mandatory in ALL modes. Ask the one Compliance & Data Classification question; compress everything else. |
+| Resolving compliance to "none" on an "unsure" answer | Default to the conservative in-scope set, tag `confirm-with-compliance`, never silently drop a framework. |
+| Reciting "GDPR Art. 17 / PCI Req 8.3" in the BRD | The PM captures SIGNALS only. Specific control ids/articles/statutory clocks are verified live downstream by compliance-officer/solution-architect, never from memory. |

@@ -17,6 +17,10 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/security-defaults.md 2>/dev/null || true`
+!`cat docs/architecture/performance-budget.yaml 2>/dev/null || true`
+!`cat config/feature-flags.yaml 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
 
@@ -109,9 +113,9 @@ This skill runs as Phase 3b in the Shipyard pipeline, in parallel with Software 
 | Phase | File | When to Load | Purpose |
 |-------|------|-------------|---------|
 | 1 | phases/01-analysis.md | Always first | Read BRD user stories, read API contracts, framework selection, UI/UX analysis |
-| 2 | phases/02-design-system.md | After Phase 1 | **Functional defaults only** — minimal tokens, system fonts, neutral palette. NOT final design. |
+| 2 | phases/02-design-system.md | After Phase 1 | **Functional defaults only** — minimal tokens, system fonts, neutral palette. NOT final design. Also emits the security foundation: CSP/security headers + DOMPurify sanitizer. |
 | 3 | phases/03-components.md | After Phase 2 | UI primitives, layout components, feature components, accessibility |
-| 4 | phases/04-pages-routes.md | After Phase 3 | Page layouts, routing, auth guards, state management, API client layer |
+| 4 | phases/04-pages-routes.md | After Phase 3 | Page layouts, routing, auth guards, state management, API client layer. Also emits frontend observability (web-vitals/traceparent/error reporter), RFC 9457 error parsing, and the OpenFeature `useFlag` hook. |
 | 4b | (inline — see Functional Completeness below) | After Phase 4 | Dead element scan, navigation graph, interaction trace, cross-agent reconciliation |
 | 5 | phases/05-design-polish.md | After Phase 4b verified | **Style selection (mode-aware: auto-select in Express, ask user in Standard+). Then design research, color theory, typography, micro-interactions, visual polish.** |
 | 6 | phases/06-testing-a11y.md | After Phase 5 | Component tests, e2e tests, accessibility audit, performance budget, Storybook |
@@ -261,7 +265,24 @@ When parallel page agents complete (auth agent, dashboard agent, settings agent,
 | Tests | `frontend/tests/` | Component, page, hook, e2e, a11y tests |
 | Storybook | `frontend/storybook/` | Component documentation and visual testing |
 | Config | `frontend/` root | package.json, tsconfig, tailwind, eslint, playwright, lighthouse |
+| Observability | `frontend/app/lib/observability/` | web-vitals reporter, global error reporter, traceparent-injecting API client (names per observability-contract.md) |
+| Perf gates | `frontend/lighthouserc.json`, `frontend/.size-limit.json` | CI thresholds READ FROM `docs/architecture/performance-budget.yaml` (never hardcoded) |
+| Makefile gate targets | root `Makefile` (append) | EMIT `size-limit` (runs size-limit against `.size-limit.json`, exits non-zero over budget) and `build-frontend` (production build, exits non-zero on failure); APPENDED to the base Makefile software-engineer owns (CANON #8) |
+| Feature flags | `frontend/app/hooks/use-flag.ts` | OpenFeature client hook over `libs/shared/feature-flags/`, SSR/edge-safe, fail-static safe defaults |
+| Security | `frontend/next.config.*` / middleware, `frontend/app/lib/sanitize.ts` | CSP + security headers, DOMPurify wrapper per security-defaults.md |
 | Workspace | `Shipyard/frontend-engineer/` | Analysis docs, design research, design decisions, performance budget, progress notes |
+
+## Cross-Skill Contracts (obey exactly — shared with backend / qa / devops / sre)
+
+These contracts are loaded at the top of this SKILL.md and are **non-negotiable**. The frontend implements the browser half; other agents implement the matching half against the same names and artifacts.
+
+- **Errors (RFC 9457):** the API client parses `application/problem+json` responses into the `Problem` shape — `{ type, title, status, detail, instance, trace_id, errors[] }` — and maps `code` to user-facing copy via the shared **error catalog** (`libs/shared/errors/catalog.*`). Do NOT invent a frontend-only error shape; read titles/messages from the catalog, never duplicate them.
+- **Observability:** EMIT exactly the names in `Shipyard/.protocols/observability-contract.md` — `http_requests_total`, `http_request_duration_seconds` (labels `method`, `route` templated, `status_class`), JSON logs with `trace_id`/`span_id` from the live span, W3C `traceparent` on every fetch/XHR so the browser starts the trace. See Phase 4 (Frontend Observability) and Phase 6.
+- **Performance budget:** READ `docs/architecture/performance-budget.yaml` (`web_vitals`, `bundle`) — never hardcode 2.5s / 200KB. Lighthouse + size-limit thresholds derive from it. See Phase 6.
+- **Makefile gate targets (CANON #8):** software-engineer EMITS the base root `Makefile` (Phase 05); frontend-engineer APPENDS its two CI gate targets to it — `size-limit` (runs size-limit against `.size-limit.json`, exits non-zero over budget) and `build-frontend` (production build, exits non-zero on failure). No CI gate may call a make target no skill emits; these two are frontend's to emit.
+- **Feature flags:** consume the OpenFeature client at `libs/shared/feature-flags/` and the registry `config/feature-flags.yaml`. Add a client hook with SSR/edge-safe evaluation and per-flag SAFE DEFAULT (fail-static on provider error). See Phase 4 (OpenFeature client hook). Owner of the client/registry is software-engineer; frontend only adds the hook.
+- **Security defaults:** obey `Shipyard/.protocols/security-defaults.md` — CSP/security headers, no unsanitized `dangerouslySetInnerHTML`, secure cookies, no secrets in the client bundle. Each BUILD phase asserts `security-defaults checklist passes`.
+- **Architecture boundaries:** obey `Shipyard/.protocols/architecture-boundaries.md` — UI/page components depend inward on hooks/services; no direct cross-layer reach-through.
 
 ## Common Mistakes
 
@@ -288,3 +309,8 @@ When parallel page agents complete (auth agent, dashboard agent, settings agent,
 | Config override pointing to the default value | If `signIn: "/api/auth/signin"` IS the framework default, the override creates an infinite redirect loop. Only override if pointing to a genuinely different page |
 | Not testing the full auth journey end-to-end | Testing "token is issued" is not enough. Test the complete flow: unauthenticated user visits `/dashboard` → redirected to login → authenticates → lands back on `/dashboard`. Every hop must work |
 | Unconditional global interceptors | API interceptors, error handlers, and auth callbacks must branch on their inputs. A global redirect callback that ignores the `url` parameter and always returns `/dashboard` breaks every other redirect in the app |
+| Inventing a frontend-only error shape | Parse the backend's RFC 9457 `application/problem+json` (`Problem`: type/title/status/detail/instance + `trace_id`/`errors[]`) and resolve user copy from the shared error catalog (`libs/shared/errors/catalog.*`) — don't re-declare titles/messages inline |
+| Browser telemetry that no dashboard reads | EMIT the exact `observability-contract.md` names (`http_requests_total`, `http_request_duration_seconds`, web-vitals LCP/INP/CLS), inject W3C `traceparent` so the browser starts the trace, and report `window.onerror`/`unhandledrejection` + a global error boundary |
+| Hardcoding perf thresholds (2.5s / 200KB) | Read `docs/architecture/performance-budget.yaml` (`web_vitals`, `bundle`) into `lighthouserc.json` + `.size-limit.json`; these are CI gates, not docs |
+| Rolling your own feature-flag system | Consume the shared OpenFeature client (`libs/shared/feature-flags/`) + registry (`config/feature-flags.yaml`) via a `useFlag` hook with SSR/edge-safe eval and fail-static safe defaults |
+| Unsanitized `dangerouslySetInnerHTML` / missing CSP | Route all HTML through `lib/sanitize.ts` (DOMPurify, strict allowlist); serve a CSP with no `unsafe-inline`/`unsafe-eval`; `react/no-danger` ESLint rule on |

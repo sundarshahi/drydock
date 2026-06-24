@@ -15,7 +15,7 @@ On PARALLEL #5 completion:
 ┌─ SHIP: Infra + Remediation COMPLETE ────── ⏱ {time} ─┐
 │                                                        │
 │  ✓ DevOps         {N} Terraform modules, {M} workflows │
-│  ✓ Remediation    {N} Critical/{M} High fixed          │
+│  ✓ Remediation    {N} blocking findings fixed          │
 │                                                        │
 │  → Starting SRE + Data Scientist                       │
 └────────────────────────────────────────────────────────┘
@@ -41,11 +41,13 @@ On PARALLEL #6 completion:
 ## Re-Anchor
 
 Before creating SHIP agent tasks, re-read key artifacts from disk:
-- `Shipyard/security-engineer/findings/` (findings for remediation)
-- `Shipyard/code-reviewer/findings/critical.md`, `high.md`
+- `Shipyard/security-engineer/findings/` (security findings for remediation)
+- `Shipyard/code-reviewer/findings/critical.md`, `high.md` (including HIGH architecture-boundary violations)
+- `Shipyard/compliance-officer/` control-evidence map (missing mandatory controls)
+- `Shipyard/qa-engineer/` results (failing tests, sub-threshold coverage, perf regression)
 - `Shipyard/solution-architect/system-design.md` (architecture for infra)
 - Directory listing of `services/`, `infrastructure/` (what exists)
-- All HARDEN receipts from `.orchestrator/receipts/`
+- All HARDEN receipts from `.orchestrator/receipts/` (T5, T6a, T6b, Tcomp) — including their gate/metric fields
 
 Use this freshly-read data when writing agent task prompts below.
 
@@ -68,8 +70,13 @@ Write to project root: infrastructure/, .github/workflows/
 Write workspace artifacts to: Shipyard/devops/
 DO NOT define SLOs — add placeholder: "SLO thresholds defined by SRE."
 DO NOT write runbooks — SRE writes runbooks to docs/runbooks/.
-Validate: terraform validate, pipeline syntax lint.
-When complete, write a receipt JSON to Shipyard/.orchestrator/receipts/T7-devops.json with task, agent, phase, status, artifacts, metrics, effort, verification. Then mark your task as completed.""",
+Generate GitHub Actions workflow templates first for CI/CD. Embed in CI the SAME scanners the BUILD-EXIT security gate ran (osv-scanner/npm audit, gitleaks, semgrep --config auto) so CI enforces exactly what BUILD enforced.
+HARD PIPELINE LINT (replaces any vague "pipeline syntax lint" — this is a blocking gate, not advisory). Run and capture results:
+  - actionlint on every .github/workflows/*.yml
+  - hadolint on every Dockerfile
+  - tflint AND terraform validate on all Terraform/IaC (run terraform init -backend=false first as needed)
+  Any error from actionlint, hadolint, tflint, or terraform validate FAILS the T7 receipt — set status: failed, do NOT mark the task completed, self-debug and re-run until clean (or escalate after retries).
+When complete, write a receipt JSON to Shipyard/.orchestrator/receipts/T7-devops.json with task, agent, phase, status, artifacts, metrics, effort, verification. The verification block MUST record the lint result per tool (actionlint, hadolint, tflint, terraform validate) as pass/fail with error counts — a non-clean lint means status: failed. Then mark your task as completed.""",
   subagent_type="general-purpose",
   mode="bypassPermissions",
   run_in_background=True,
@@ -80,8 +87,8 @@ When complete, write a receipt JSON to Shipyard/.orchestrator/receipts/T7-devops
 TaskUpdate(taskId=t8_id, status="in_progress")
 Agent(
   prompt="""You are the Remediation Engineer.
-Read HARDEN findings from workspace: Shipyard/security-engineer/, code-reviewer/, qa-engineer/
-Focus on Critical and High severity findings only.
+Read HARDEN findings from workspace: Shipyard/security-engineer/, code-reviewer/, qa-engineer/, compliance-officer/
+Fix the full BLOCKING set from HARDEN (not just security): security Critical/High, ANY failing test, sub-threshold coverage/patch-coverage, p95/error-rate perf regression beyond tolerance, every MISSING mandatory compliance control, and every HIGH architecture-boundary violation. Lower-severity / non-mandatory items are documented, not fixed here.
 For each finding:
   1. Read the affected file
   2. Apply the fix
@@ -161,9 +168,10 @@ for branch in ship_p6_worktree_branches:
 ## Receipt Verification Before Gate 3
 
 After T9 (and T10 if applicable) completes:
-1. **Verify all SHIP receipts:** Read `.orchestrator/receipts/T7-devops.json`, `T8-remediation.json`, `T9-sre.json`, `T10-data-scientist.json` (if applicable). Verify all listed artifacts exist.
-2. **Verify remediation chain:** For each Critical/High finding from HARDEN, check that a remediation receipt AND a verification receipt exist. If any Critical finding lacks verification, flag before Gate 3.
-3. **Aggregate metrics** from all receipts for Gate 3 display — use verified receipt data, not memory.
+1. **Verify all SHIP receipts:** Read `.orchestrator/receipts/T7-devops.json`, `T8-remediation.json`, `T9-sre.json`, `T10-data-scientist.json` (if applicable). Verify all listed artifacts exist. Confirm the T7 receipt records a CLEAN hard pipeline lint (actionlint/hadolint/tflint/terraform validate) — a failed lint blocks Gate 3.
+2. **Verify remediation chain:** For each BLOCKING finding from HARDEN (security Critical/High, failing test, sub-threshold coverage, perf regression, missing mandatory compliance control, HIGH architecture-boundary violation), check that a remediation receipt AND a verification receipt exist. If any blocking finding lacks verification, flag before Gate 3.
+3. **Aggregate metrics** from all receipts for Gate 3 display — use verified receipt data, not memory. Include the gate fields: `tests_passing`/`tests_failing`, `coverage_lines`/`coverage_branches`, `mutation_score`, `patch_coverage`, `contract_can_i_deploy`, `perf_baseline_regression`, and the compliance controls-present/missing status.
+4. **'production-ready' is BLOCKED** while any blocking gate is open — failing tests, coverage/patch-coverage below threshold, perf-budget regression, missing mandatory compliance control, or HIGH architecture-boundary violation. Gate 3 may only present "production-ready" when all blocking gates are clear OR each open item carries a logged "accepted with justification" override receipt.
 
 ## Gate 3 — Production Readiness
 

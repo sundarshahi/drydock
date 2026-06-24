@@ -10,7 +10,11 @@ Inventory every existing artifact across the project, identify documentation gap
 |-------|------|-----------------|
 | Business context | `Shipyard/product-manager/` | User personas, feature scope, domain glossary |
 | Architecture docs | `docs/architecture/` | Service boundaries, ADRs, tech stack, data flow |
-| API contracts | `api/openapi/*.yaml`, `api/asyncapi/*.yaml` | Endpoints, schemas, auth methods, webhook events |
+| API contracts | `api/openapi/*.yaml`, `api/asyncapi/*.yaml` | Endpoints, schemas, auth methods, webhook events, reusable `Problem` schema |
+| Error catalog | `libs/shared/errors/catalog.*` | Single source for the generated error-code table — `{ code, http_status, title, message_template, remediation, docs_anchor }` |
+| Observability contract | `Shipyard/.protocols/observability-contract.md` | The ONLY metric/log/span names the monitoring guide may reference |
+| Performance budget | `docs/architecture/performance-budget.yaml` | Threshold source — never hardcode perf numbers in docs |
+| Feature-flag registry | `config/feature-flags.yaml` | Flag list + lifecycle for feature-flag docs |
 | Source code | `services/`, `frontend/`, `libs/` | Module structure, code comments, config files, env vars |
 | Test artifacts | `tests/`, `Shipyard/qa-engineer/` | Test coverage, integration test descriptions, test strategy |
 | DevOps artifacts | `infrastructure/`, `.github/workflows/` | CI/CD pipelines, deployment configs, environment definitions |
@@ -43,7 +47,11 @@ Cross-reference the inventory against the required documentation matrix:
 | Architecture overview | ADRs, service map | All technical | P0 |
 | API authentication guide | OpenAPI spec, auth middleware | API consumer | P0 |
 | API endpoint reference | OpenAPI spec | API consumer | P0 |
-| Error code reference | Source code, API spec | API consumer | P0 |
+| Error code reference (GENERATED from error-catalog) | `libs/shared/errors/catalog.*` + `Problem` schema | API consumer | P0 |
+| Runnable API collection (Bruno/.http, GENERATED) | OpenAPI spec | API consumer | P1 |
+| Root README + governance (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CODEOWNERS, PR/issue templates) | Project metadata, process | All | P1 |
+| Changelog automation (release-please / Changesets) | Commit history / changesets | Maintainer | P1 |
+| Monitoring guide | `observability-contract.md`, dashboards | Operator | P1 |
 | Deployment guide | CI/CD pipelines | Operator | P1 |
 | Monitoring guide | Monitoring configs, SLOs | Operator | P1 |
 | Incident response guide | SRE incidents | Operator | P1 |

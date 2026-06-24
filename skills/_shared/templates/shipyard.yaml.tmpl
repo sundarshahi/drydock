@@ -60,6 +60,28 @@ features:
   grpc: false                        # gRPC inter-service communication
   event_driven: true                 # Async messaging (Kafka/RabbitMQ/SQS)
 
+# Compliance — per-product regulatory scope. Drives the Compliance Officer
+# and the blocking compliance gate. Leave lists empty for non-regulated products.
+compliance:
+  frameworks: []                     # soc2 | gdpr | hipaa | pci-dss | ccpa | iso27001 | fedramp
+  data_types: []                     # pii | phi | pci | financial | biometric
+  regions: []                        # us | eu | uk | ca | apac
+  certification_stage: none          # none | readiness | audit | certified
+
+# Performance — budgets enforced by the production-readiness gate.
+performance:
+  budgets_file: "docs/architecture/performance-budget.yaml"  # perf budget definitions
+
+# Feature flags — runtime flag provider and fallback strategy.
+feature_flags:
+  provider: openfeature              # openfeature | launchdarkly | unleash | flagsmith
+  fallback: env                      # env | static | off
+
+# Observability — OpenTelemetry export + metric methodology.
+observability:
+  otlp_endpoint: ""                  # OTLP collector endpoint (empty = console exporter)
+  metrics: red_use                   # red_use | red | use | custom
+
 # Phase control — skip or customize pipeline phases.
 phases:
   define: true

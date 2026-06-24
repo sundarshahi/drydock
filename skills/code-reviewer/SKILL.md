@@ -20,6 +20,11 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/architecture-boundaries.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
+!`cat docs/architecture/performance-budget.yaml 2>/dev/null || true`
+!`cat config/feature-flags.yaml 2>/dev/null || true`
+!`cat api/openapi/components.yaml 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use smart_outline before full Read.
@@ -139,9 +144,22 @@ Every finding MUST be assigned exactly one severity level. Use these definitions
 | Severity | Definition | Action Required | Examples |
 |----------|-----------|----------------|---------|
 | **Critical** | Data loss risk or correctness bug that will cause production incidents | Must fix before any deployment | Race condition causing double charges, unencrypted PII storage, missing auth check on admin endpoint |
-| **High** | Architectural violation, significant design flaw, or reliability risk that will cause problems at scale | Must fix before production release | Violates ADR decision, synchronous call in async pipeline, missing circuit breaker on external dependency, N+1 query on high-traffic endpoint |
-| **Medium** | Code quality issue that increases maintenance cost, makes debugging harder, or indicates emerging tech debt | Should fix within current sprint | SOLID violation, duplicated business logic across services, poor error messages, missing structured logging |
+| **High** | Architectural violation, significant design flaw, or reliability risk that will cause problems at scale | Must fix before production release | Violates ADR decision, **dependency-direction breach (framework/IO import inward, use-case importing a concrete adapter) — `make arch` exits non-zero**, **port-boundary violation (concrete adapter instantiated outside the composition root)**, **error response not RFC 9457 `application/problem+json` / bypasses the error-catalog module**, synchronous call in async pipeline, missing circuit breaker on external dependency, N+1 query on high-traffic endpoint |
+| **Medium** | Code quality issue that increases maintenance cost, makes debugging harder, or indicates emerging tech debt | Should fix within current sprint | SOLID violation, **anemic-domain / primitive-obsession in a domain-rich service**, duplicated business logic across services, poor error messages, missing structured logging |
 | **Low** | Style issue, minor optimization, or improvement that would make code marginally better | Fix when convenient; consider adding to backlog | Inconsistent naming convention, unused import, suboptimal but correct algorithm, missing JSDoc on public API |
+
+### Fixed severity classifications (do NOT downgrade)
+
+Some findings have a mandated severity — assigning them lower is itself a review defect. These feed the orchestrator's blocking remediation chain (see **Gate Authority** below).
+
+| Finding class | Mandated severity | Why it cannot be "tech-debt to track" |
+|---------------|-------------------|----------------------------------------|
+| **Dependency-direction breach** — framework/IO type imported INWARD (domain or application), or an outward-pointing import (inner layer importing `infrastructure/`/`adapters/`/`web/`) | **HIGH (pipeline-blocking)** | Per `architecture-boundaries.md`: a boundary breach is structural rot that compounds. `make arch` already exits non-zero on it; the review must agree. |
+| **Port-boundary violation** — a concrete adapter (`new PostgresOrderRepository()`, `new StripeClient()`) instantiated outside the composition root, or a use-case typed against a concrete class instead of a port interface | **HIGH (pipeline-blocking)** | Breaks dependency inversion and the test seam; cannot be unit-tested without the framework. |
+| **Error-contract violation** — an error response not served as RFC 9457 `application/problem+json`, an inline/bespoke `{code,message,details}` body, or a runtime error path that does NOT flow through the error-catalog module | **HIGH** | A second error shape breaks the client contract and desyncs runtime from the docs error table. |
+| **Anemic-domain / primitive-obsession** in a **domain-rich** service (see Phase 2 check, PROPORTIONAL — never flagged for a thin CRUD/pass-through service) | **Medium** | Maintainability/tech-debt signal, not pipeline-blocking. |
+
+**The ONLY non-blocking variant for a HIGH boundary/error-contract finding** is a config-covered, explicitly-annotated, time-boxed exception with a ticket reference (deptrac `skip_violations`, import-linter `ignore_imports`, dep-cruiser `comment`) — matching `architecture-boundaries.md`. Unannotated violations stay HIGH and block.
 
 ---
 
@@ -177,10 +195,22 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 **Inputs to read:**
 - `docs/architecture/` ADRs (every Architecture Decision Record)
 - `docs/architecture/` system architecture diagrams, service boundaries, communication patterns
-- `api/` API contracts (OpenAPI/AsyncAPI)
+- `Shipyard/.protocols/architecture-boundaries.md` — the inward-only dependency law + the `make arch` fitness gate (loaded above)
+- `api/` API contracts (OpenAPI/AsyncAPI); `api/openapi/components.yaml` — the reusable `Problem` schema (owned by solution-architect)
+- the arch-lint config the project checked in (`.dependency-cruiser.js` / `*ArchitectureTest` / `.importlinter` / `deptrac.yaml` / `.go-arch-lint.yml`) and the `make arch` target
 - `schemas/` data models and database design
 - `services/`, `libs/` full backend source tree
 - `frontend/` full frontend source tree
+
+**Architecture-boundary gate (RUN it — do not eyeball):**
+
+0. **Run `make arch`** and capture the exit code and output. This is the project's mechanical fitness function from `architecture-boundaries.md` — it asserts the inward-only dependency law and the no-cycles rule.
+   - **`make arch` exits non-zero → HIGH, pipeline-blocking finding** per offending edge. Quote the actual tool output and the violating `file:line → forbidden target` import (per `grounding-protocol.md` — never assert "the boundary is clean" without `make arch` exit 0 observed THIS session).
+   - **The gate itself is missing, weakened, or wrapped in `|| true` / `continue-on-error`** (no `make arch` target, or CI does not invoke it as a required step) → HIGH finding: the architecture is a suggestion, not a boundary. A PR that removes or neuters the gate is not approvable.
+   - Beyond the tool, inspect the import graph for the two breach directions the tool encodes, and report each as **HIGH** (see Fixed severity classifications):
+     - **Framework/IO leaking INWARD** — any web-framework, ORM, DB/HTTP driver, cloud SDK, logger, env reader, clock, filesystem, or serialization-framework import inside `domain/` (HIGH) or a concrete-infra import inside `application/`/use-cases (HIGH). Domain imports only stdlib + domain code.
+     - **Outward-pointing imports** — any inner layer (`domain/`, `application/`) importing from `infrastructure/`, `adapters/`, `web/`, or `persistence/`; any cross-layer cycle.
+   - **Port-boundary checks (HIGH):** a use-case typed against a concrete class instead of a port interface; a concrete adapter constructed (`new PostgresOrderRepository()` / `new StripeClient()`) anywhere except the composition root (`main`/`wire`/DI module/bootstrap). If a use-case can't be unit-tested without a real DB/HTTP server, a port is missing — report it.
 
 **Review checklist:**
 1. **Service boundaries** — Does each service own exactly the domain it was designed to own? Are there cross-boundary data accesses that bypass APIs?
@@ -189,8 +219,11 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 4. **Data ownership** — Does each service have its own database/schema? Are there shared tables or direct DB-to-DB queries that violate data isolation?
 5. **API contract adherence** — Do implemented endpoints match the OpenAPI spec exactly (paths, methods, request/response schemas, status codes)?
 6. **Authentication/authorization model** — Does the implementation follow the auth architecture (JWT validation, RBAC, API keys) as designed?
-7. **Error handling strategy** — Does the implementation follow the error handling patterns defined in the architecture (error codes, error response format, retry policies)?
-8. **Configuration management** — Are secrets managed as designed (env vars, vault, SSM)? Are there hardcoded values that should be configurable?
+7. **Error contract — RFC 9457 (HIGH)** — Every error response (4xx/5xx) MUST be served as `Content-Type: application/problem+json` with a body shaped `{ type, title, status, detail, instance }` plus the standard extensions `trace_id` (the SAME id as the observability-contract live-span `trace_id`, never a freshly generated one) and `errors[]` (`{ field|pointer, detail }`). The response body MUST `$ref` the reusable OpenAPI `Problem` component in `api/openapi/components.yaml` (owned by solution-architect). Flag — as HIGH:
+   - any handler that hand-rolls a `{code, message, details}` (or other bespoke) error envelope;
+   - any error response missing `application/problem+json` or not `$ref`'ing `#/components/schemas/Problem`;
+   - any runtime error path that does NOT flow through the single error-catalog module (`libs/shared/errors/catalog.*`) — `Problem.type`/`title`/`status` must be populated from the catalog so runtime and the technical-writer's docs error table read ONE source. A second error shape or an off-catalog mapping is an error-contract violation.
+8. **Configuration management & feature flags** — Are secrets managed as designed (env vars, vault, SSM)? Are there hardcoded values that should be configurable? Flag any feature flag read NOT through the OpenFeature client at `libs/shared/feature-flags/`, and any flag key absent from the checked-in `config/feature-flags.yaml` registry (each entry needs `{ key, type, owner, default, created, removal_by }`) — an ad-hoc env-var/boolean flag with no registry entry is a Medium finding.
 
 **Output:** Write `Shipyard/code-reviewer/architecture-conformance.md` with:
 - A table listing every ADR from `docs/architecture/` and its conformance status (Conformant / Partial / Violated)
@@ -217,6 +250,17 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 3. **Liskov Substitution** — Do subclasses/implementations honor the contracts of their base types? Are there type-check downcasts that violate polymorphism?
 4. **Interface Segregation** — Are interfaces focused? Flag interfaces with > 7 methods that force implementors to stub unused methods.
 5. **Dependency Inversion** — Do high-level modules depend on abstractions? Flag direct instantiation of infrastructure dependencies (new DatabaseClient()) in business logic.
+
+**Domain Modeling (PROPORTIONAL — domain-rich services only):**
+
+This check applies ONLY to services with real business invariants (pricing, eligibility, state machines, money, scheduling, risk). **Do NOT apply it to thin CRUD / pass-through / DTO-mapping services** — an anemic shape is correct there, and flagging it is severity-inflation noise. Decide the service's nature first (does it have rules to protect, or does it just persist and return rows?); only then run this check.
+
+For a domain-rich service, flag as **Medium** (anemic-domain / tech-debt, not pipeline-blocking):
+- **Anemic domain model** — domain entities are bags of public getters/setters with all behavior living in "service"/"manager" classes that reach in and mutate them. Business rules that belong on the entity (an `Order` that can be put into an invalid state by an outside caller) signal the model is anemic. Recommend moving the invariant onto the entity so illegal states are unrepresentable.
+- **Primitive obsession** — domain concepts carried as raw `string`/`int`/`float`/`bool`/maps instead of value objects (`Money`, `EmailAddress`, `Quantity`, `OrderId`). Flag money as floats, IDs as bare strings passed interchangeably, and validation logic duplicated at every call site instead of enforced in a value object's constructor.
+- **Leaked invariants** — the same business rule (discount cap, status-transition guard, non-negative quantity) re-implemented across handlers/services instead of being enforced once in the domain. Cross-reference with the DRY check below — one root-cause finding, not N.
+
+Keep it proportional: a couple of well-targeted findings on a genuinely rich domain, never a blanket "wrap every string in a type" demand.
 
 **Code Structure:**
 6. **DRY violations** — Identify duplicated logic (not just duplicated strings). Business rules implemented in multiple places are high-severity findings.
@@ -253,7 +297,12 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 **Inputs to read:**
 - `services/`, `libs/` all backend source files (especially data access, API handlers, middleware)
 - `frontend/` all frontend source files (especially data fetching, rendering, bundle composition)
+- `docs/architecture/performance-budget.yaml` — the single source of truth for perf thresholds (p95 latency, LCP, bundle size, etc.)
 - `docs/architecture/` NFRs (latency targets, throughput requirements)
+
+**Budget is read, never hardcoded.** Every performance threshold in this phase comes from `docs/architecture/performance-budget.yaml` (the solution-architect owns it). NEVER hardcode 500ms / 200KB — read the resolved number from the budget and cite it in the finding (e.g. "p95 480ms exceeds budget `api.p95_ms: 400`"). If the budget file is absent, that is itself a finding (no budget to gate against); do not silently invent a threshold.
+
+**Observability names are a contract.** When a performance finding references instrumentation (latency histograms, in-flight gauges, pool saturation), use ONLY the names declared in `observability-contract.md` — `http_request_duration_seconds` (seconds, with exemplars), `http_requests_in_flight`, `<resource>_pool_connections_in_use` / `<resource>_pool_wait_seconds` / `<resource>_pool_acquire_errors_total`. Never invent a metric name no code emits; flag any hot path or pool that lacks the contract's instruments rather than naming a synonym.
 
 **Review checklist:**
 
@@ -263,7 +312,7 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 3. **Unbounded queries** — Flag SELECT queries without LIMIT. Flag list endpoints without pagination.
 4. **Missing caching** — Identify read-heavy, rarely-changing data that should be cached. Flag cache invalidation gaps.
 5. **Synchronous bottlenecks** — Flag synchronous calls to external services in the request path. Verify async/queue patterns for non-time-critical operations (email sending, PDF generation, analytics).
-6. **Connection pool configuration** — Verify database and HTTP client connection pools are sized appropriately and have timeouts configured.
+6. **Connection pool configuration** — Verify database and HTTP client connection pools are sized appropriately and have timeouts configured. Verify the pool emits the USE instruments from `observability-contract.md` (`<resource>_pool_connections_in_use`, `<resource>_pool_connections_max`, `<resource>_pool_wait_seconds`, `<resource>_pool_acquire_errors_total`) so saturation is observable — a pool with no saturation metric is a blind spot, not just a config gap.
 7. **Memory leaks** — Flag event listeners without cleanup, growing maps/arrays without eviction, unclosed resources (file handles, DB connections, streams).
 8. **Serialization overhead** — Flag large object serialization in hot paths. Verify API responses do not include unnecessary fields.
 
@@ -321,7 +370,16 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
    - **Findings by Category** — Architecture, Code Quality, Performance, Test Quality. Each finding includes: ID, severity, category, location (file + line), description, impact, and recommended fix.
    - **Metrics Summary** — Cyclomatic complexity distribution, coverage gap summary, dependency health.
    - **Recommendations** — Prioritized list of actions. What to fix now, what to fix next sprint, what to add to tech debt backlog.
-   - **Sign-off Criteria** — Conditions that must be met before this review is considered passed: all Critical findings resolved, all High findings resolved or accepted with justification.
+   - **Sign-off Criteria** — Conditions that must be met before this review is considered passed: all Critical findings resolved, all High findings resolved or **accepted with justification (logged override — see Gate Authority)**. The overall assessment is **Fail** while any unresolved Critical or any un-overridden High remains; it is never **Pass** with a live arch-boundary or error-contract breach.
+
+### Gate Authority — HIGH findings are pipeline-blocking
+
+This skill is a **quality gate** (the orchestrator wires it as Gate 3). The reviewer's job is to **classify severities so they block** — the orchestrator enforces the block and drives remediation; it does NOT re-triage.
+
+- **Every Critical and every HIGH finding feeds the blocking finding → fix → verify remediation chain.** A HIGH is not advisory: the orchestrator must not advance to deployment-pipeline configuration while one is open. This is the same chain the BUILD gates use.
+- The architecture-boundary and error-contract findings classified HIGH above (dependency-direction breach, port-boundary violation, error response not RFC 9457 / off the error-catalog) enter that chain unchanged — `make arch` exit non-zero, an inward framework import, or a bespoke error envelope each **block 'production-ready'**, matching `architecture-boundaries.md`'s "HIGH, pipeline-blocking, NOT Medium" rule.
+- **BLOCK on failing tests / coverage / perf-budget / compliance / arch-boundary.** The reviewer reports the breach at the mandated severity; the gate refuses to pass. Do not soften a HIGH to Medium to "let it through" — that defeats the gate.
+- **Override path (accepted with justification — LOGGED):** a HIGH may be explicitly accepted only with a written justification recorded in `review-report.md` (finding ID, who accepted, why, the ticket/removal date). For arch-boundary breaches the override MUST also be the config-covered, time-boxed, ticket-referenced exception (deptrac `skip_violations` / import-linter `ignore_imports` / dep-cruiser `comment`) — an unannotated breach cannot be overridden, it stays HIGH and blocks. The override is a logged decision, never a silent downgrade.
 
 2. Write individual findings files to `Shipyard/code-reviewer/findings/`:
    - `critical.md` — Findings that block deployment
@@ -395,6 +453,10 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 | 14 | Reviewing code in isolation without understanding the business context | Flags technically correct code as problematic because the business rule was not understood | Read the BRD/PRD acceptance criteria before starting the review to understand why the code exists |
 | 15 | Performing OWASP or security vulnerability analysis | Security review is the sole responsibility of the security-engineer skill | Defer all security findings to the security-engineer. Focus on architecture, code quality, performance, and test quality |
 | 16 | Being too polite in findings | Polite findings get ignored. "Could potentially be improved" is not actionable. | Write findings that make the problem unavoidable: "This WILL crash when X happens because Y." If you're not uncomfortable writing it, you're not being adversarial enough. |
+| 17 | Filing a dependency-direction or port-boundary breach as Medium "cleanup later" | Severity DEFLATION lets structural rot through the gate; the orchestrator only blocks on Critical/HIGH | Dependency-direction and port-boundary violations are HIGH, pipeline-blocking (see Fixed severity classifications). Never downgrade them to style/tech-debt — `architecture-boundaries.md` mandates HIGH. |
+| 18 | Asserting "the architecture boundary is clean" without running `make arch` | An un-run gate proves nothing; the import graph may already be broken | RUN `make arch`, observe exit 0, and cite the actual output (per `grounding-protocol.md`). If the gate is missing or wrapped in `\|\| true`/`continue-on-error`, that absence is itself a HIGH finding. |
+| 19 | Demanding value objects for every primitive on a thin CRUD service | Anemic shape is correct for pass-through/DTO services; blanket "wrap every string" is noise | Apply the anemic-domain / primitive-obsession check PROPORTIONALLY — only to services with real business invariants, and only as Medium. |
+| 20 | Accepting a bespoke `{code,message,details}` error body because "it works" | A second error shape breaks the RFC 9457 client contract and desyncs runtime from the docs error table | Require `application/problem+json` `$ref`'ing the shared `Problem` schema, populated via the error-catalog module — flag any other shape HIGH. |
 
 ---
 
@@ -403,6 +465,11 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 Before marking the skill as complete, verify:
 
 - [ ] `architecture-conformance.md` audits every ADR in `docs/architecture/` with a conformance status
+- [ ] `make arch` was RUN this session; exit code + output recorded. Any non-zero exit, inward framework/IO import, outward-pointing inner import, or port-boundary violation is reported as a HIGH (pipeline-blocking) finding; a missing/`|| true`-wrapped gate is itself a HIGH finding
+- [ ] Error-contract checked: every 4xx/5xx serves `application/problem+json` and `$ref`s the shared `Problem` schema; runtime errors flow through the error-catalog module; bespoke `{code,message,details}` envelopes flagged HIGH
+- [ ] Anemic-domain / primitive-obsession check applied ONLY to domain-rich services (skipped for thin CRUD), findings classified Medium
+- [ ] Performance findings cite thresholds READ from `docs/architecture/performance-budget.yaml` (no hardcoded 500ms/200KB) and reference ONLY `observability-contract.md` metric names
+- [ ] All Critical + HIGH findings are classified to block the orchestrator's Gate 3 remediation chain; any HIGH override is logged in `review-report.md` with justification + ticket
 - [ ] Every finding has: ID, severity, category, file location, description, impact, and recommendation
 - [ ] Performance review checks for N+1 queries, missing indexes, unbounded queries, and caching gaps
 - [ ] Test quality review cross-references the `Shipyard/qa-engineer/test-plan.md` traceability matrix for coverage gaps

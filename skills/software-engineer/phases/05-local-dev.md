@@ -89,7 +89,20 @@ Generate `Makefile` at the project root:
 # make seed           — Seed development data
 # make clean          — Remove containers, volumes, caches
 # make build          — Build all service images
+# make arch           — Import-boundary fitness function (exits non-zero on violation)
+# make smoke-telemetry— Boot stack, scrape /metrics, assert RED instruments (exits non-zero on "No data")
+# make security-scan  — osv-scanner + gitleaks + semgrep (exits non-zero on Critical/High)
+# make flags-check    — Validate config/feature-flags.yaml (schema, stale/expired flags, safe defaults) — exits non-zero on violation
 ```
+
+**This is the BASE Makefile (software-engineer owns it).** software-engineer EMITS the targets it owns here — including `make flags-check`, which validates `config/feature-flags.yaml` (the registry software-engineer owns per Phase 3.8): well-formed schema, every flag has a SAFE DEFAULT, and no flag is past its `removal_by` (stale-flag expiry) — exiting non-zero on any violation, wired as a required CI step.
+
+**Other owner skills APPEND their gate targets to this same root Makefile** (no CI gate may call a target no skill emits):
+- **qa** → `coverage-check`, `patch-coverage`
+- **frontend-engineer** → `size-limit`, `build-frontend`
+- **devops** → `docs-examples`
+
+Each owner appends its own target; software-engineer does not pre-stub them. The base Makefile must be append-friendly (targets are additive, no clobbering).
 
 Per-service Makefiles at `services/<name>/Makefile`:
 ```makefile
@@ -187,6 +200,9 @@ Before marking the suite as complete:
 - `docker-compose up` starts all services with health checks passing
 - `make seed` populates realistic test data
 - `make test` runs all unit and integration tests green
+- `make arch` exits 0 across all services (architecture boundaries hold)
+- `make smoke-telemetry` exits 0 — **Telemetry end-to-end: boots the stack, hits an endpoint → a trace appears in Jaeger AND `/metrics` is populated with non-zero `http_requests_total` + the RED instruments** (no "No data" panels on first run; the check fails by exit code, see 3.10)
+- `make security-scan` exits 0 across the assembled stack (osv-scanner + gitleaks + semgrep; non-zero on Critical/High)
 - All services accessible at documented ports
 - Developer can start coding within 5 minutes of running setup
 
@@ -195,5 +211,9 @@ Before marking the suite as complete:
 - One-command setup: `make setup` does everything
 - Idempotent: running setup twice does not break anything
 - Documented: all ports, URLs, and credentials listed
-- Clean: `.env.example` committed, `.env` gitignored
+- Clean: `.env.example` committed (placeholders only — secrets injected at runtime by the secret manager), `.env` gitignored
 - Fast: infrastructure starts in under 60 seconds
+- `make arch` is a required, non-skippable CI step (no `|| true` / `continue-on-error`)
+- `make smoke-telemetry` is a required, non-skippable CI step (boots the stack, hits an endpoint, scrapes `/metrics`, asserts non-zero `http_requests_total` + RED instruments present; "No data" fails by exit code — see 3.10)
+- **security-defaults checklist passes** across the assembled stack
+- **BUILD-exit security scan**: `make security-scan` exits 0 — a concrete target (mirroring `make arch`) running osv-scanner (SCA) + gitleaks (secret scan) + semgrep (SAST) over the freshly written code; exits non-zero on any Critical/High finding and blocks suite completion. Required, non-skippable CI step (no `|| true` / `continue-on-error`)

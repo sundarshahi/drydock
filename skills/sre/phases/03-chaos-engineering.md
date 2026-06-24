@@ -21,28 +21,31 @@ Proactively discover failure modes before users do. Build confidence that the sy
 
 ### Step 1: Define Steady-State Hypothesis
 
-Write `chaos/steady-state-hypothesis.md` defining what "healthy" looks like in measurable terms:
+Write `chaos/steady-state-hypothesis.md` defining what "healthy" looks like in measurable terms. Each metric is the EXACT contract instrument (so the same query that proves steady state is the one Grafana/alerts already use), and latency uses the `performance-budget.yaml` p99 — not a hardcoded number:
 
 ```markdown
 # Steady-State Hypothesis
 
 ## Definition
-The system is in steady state when ALL of the following are true:
+The system is in steady state when ALL of the following are true
+(queries use observability-contract.md instruments; thresholds from performance-budget.yaml):
 
 ### Service Health
-- API availability SLI > 99.9% over the last 5 minutes
-- API p99 latency < 500ms over the last 5 minutes
-- All readiness probes passing
-- No pods in CrashLoopBackOff
+- Availability SLI > SLO target (e.g. 99.9%) over 5m:
+  `1 - sum(rate(http_requests_total{status_class="5xx"}[5m])) / sum(rate(http_requests_total[5m]))`
+- p99 latency under the budgeted p99 over 5m (READ from performance-budget.yaml, e.g. 1.2s):
+  `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) < 1.2`
+- Concurrency stable: `http_requests_in_flight` below the saturation alert threshold
+- All readiness probes passing; no pods in CrashLoopBackOff
 
-### Data Integrity
-- Database replication lag < 1 second
-- Message queue consumer lag < 1000 messages
+### Data Integrity (USE instruments)
+- DB pool not saturating: `db_pool_connections_in_use / db_pool_connections_max < 0.8`, `db_pool_wait_seconds` p99 ≈ 0
+- Broker backlog bounded: `broker_consumer_lag < 1000`
 - Cache hit rate > 80%
 
 ### Business Metrics
 - Order completion rate > 95% of baseline
-- User-facing error rate < 0.1%
+- User-facing error ratio (`status_class="5xx"`) below the budget `error_rate_pct`
 ```
 
 ### Step 2: Generate Chaos Scenarios

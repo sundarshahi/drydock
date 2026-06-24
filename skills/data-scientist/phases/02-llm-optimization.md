@@ -8,6 +8,15 @@ Optimize LLM usage for cost, quality, and latency. Produce real, deployable arti
 
 Read Phase 1 audit from `analysis/system-audit.md` and `analysis/optimization-opportunities.md` for identified optimization targets and current baselines.
 
+## Security Defaults (this phase generates LLM-serving code — obey `security-defaults.md`)
+
+Everything you emit here touches model input/output, so the LLM/AI defaults apply directly:
+
+- **Model output is untrusted.** The semantic cache stores and replays model output and the quality evaluator parses it — neither may `eval`/exec it or feed it to a sink (SQL, shell, DOM, file path, downstream prompt) without boundary validation/encoding. Validate cached/returned content before reuse.
+- **No secrets or full PII in prompts or cache keys.** The prompt-library, cache key normalization, and any logged request/response exclude credentials and unanonymized PII. Read API keys from env/secret-manager, never embed them in a prompt template or example.
+- **Gate any tool/function call the model can trigger** in a fallback chain or agentic step (allowlist tools, schema-validate args, least privilege, confirm destructive actions). **SSRF-allowlist** any model/user-influenced outbound URL (retrieval, tool fetch).
+- **Prompt-injection trust boundary:** keep system instructions separate from untrusted/retrieved content; fetched content must not rewrite instructions or exfiltrate context.
+
 ## Workflow
 
 ### Step 1: Prompt Optimization
@@ -387,9 +396,10 @@ Before proceeding to Phase 3, verify:
 - [ ] Caching strategy includes implementation code
 - [ ] Quality metrics framework is defined with automated checks
 - [ ] Minimum quality score threshold is set (optimization fails if quality drops below it)
+- [ ] `security-defaults checklist passes` — model output treated as untrusted (cache/evaluator validate before reuse), no secrets/PII in prompts or cache keys, model-triggered tool-calls gated, prompt-injection trust boundary + SSRF allowlist enforced
 
 > **GATE: Present optimization results with measured improvements. Wait for user approval before proceeding.**
 
 ## Quality Bar
 
-Every optimization must show before/after metrics. "The prompt was improved" is not acceptable. "Input tokens reduced from 1,200 to 680 (-43%), cost per call from $0.045 to $0.022 (-51%), quality score maintained at 8.2/10" is acceptable. Optimizations that reduce quality below the minimum threshold are rejected regardless of cost savings.
+Every optimization must show before/after metrics, and `security-defaults checklist passes`. "The prompt was improved" is not acceptable. "Input tokens reduced from 1,200 to 680 (-43%), cost per call from $0.045 to $0.022 (-51%), quality score maintained at 8.2/10" is acceptable. Optimizations that reduce quality below the minimum threshold are rejected regardless of cost savings. A deferred security item is logged as an explicit HARDEN hand-off, never silently skipped.

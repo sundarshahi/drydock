@@ -19,8 +19,11 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
+!`cat docs/architecture/performance-budget.yaml 2>/dev/null || echo "No performance-budget.yaml — perf gates cannot self-derive; treat as a Critical missing input"`
+!`cat config/feature-flags.yaml 2>/dev/null || echo "No feature-flags.yaml — skip flag matrix if no OpenFeature client exists"`
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use smart_outline before full Read.
 
@@ -58,10 +61,67 @@ Follow `Shipyard/.protocols/visual-identity.md`. Print structured progress throu
     ○ performance: load tests
 ```
 
-**Completion summary** (print on finish — MUST include concrete numbers):
+**Completion summary** (print on finish — MUST include concrete numbers, and MUST match the receipt's machine-readable fields below):
 ```
-✓ QA Engineer    {N} tests written, {M} passing, {K} failing    ⏱ Xm Ys
+✓ QA Engineer    {N} tests written, {M} passing, {K} failing  ·  lines {L}% / branches {B}%  ·  mutation {Mut}%    ⏱ Xm Ys
 ```
+
+**Any non-zero `{K} failing` is a remediation finding, not an FYI** — see "Blocking Receipt" below. Do NOT print a green completion line while tests are red.
+
+## Blocking Receipt & Gate Contract (CRITICAL)
+
+The orchestrator gates `production-ready` on QA. It does not read prose — it reads the **machine-readable `metrics` block of the QA receipt** (`Shipyard/.orchestrator/receipts/{task_id}-qa-engineer.json`, schema per `receipt-protocol.md`). These exact keys are MANDATORY and are extracted by the gate; emit them from real tool output (the test runner's JSON/JUnit summary + coverage report + mutation report), never from memory:
+
+```json
+{
+  "task": "Tqa",
+  "agent": "qa-engineer",
+  "phase": "HARDEN",
+  "status": "complete",
+  "artifacts": ["Shipyard/qa-engineer/test-plan.md", "tests/coverage/thresholds.json", "..."],
+  "metrics": {
+    "tests_passing": 412,
+    "tests_failing": 0,
+    "coverage_lines": 87.4,
+    "coverage_branches": 81.2,
+    "mutation_score": 64.0,
+    "patch_coverage": 83.0,
+    "contract_can_i_deploy": true,
+    "perf_baseline_regression": false
+  },
+  "effort": { "files_read": 0, "files_written": 0, "tool_calls": 0 },
+  "verification": "ran make test (exit 0), coverage gate exit 0, mutation report parsed, k6 thresholds parsed against performance-budget.yaml"
+}
+```
+
+**Gate semantics (the user's chosen policy — BLOCK with logged override):**
+
+| Receipt field | Source | BLOCKS `production-ready` when |
+|---------------|--------|-------------------------------|
+| `tests_failing` | runner JUnit/JSON summary | `> 0` |
+| `coverage_lines` / `coverage_branches` | coverage report | below the matching gate in `tests/coverage/thresholds.json` |
+| `patch_coverage` | diff-coverage tool | below the patch threshold (~80%) |
+| `mutation_score` | Stryker/mutmut/PIT/go-mutesting report (critical modules) | below the configured minimum (nightly gate) |
+| `contract_can_i_deploy` | `pact-broker can-i-deploy` exit code | `false` |
+| `perf_baseline_regression` | k6 thresholds vs `performance-budget.yaml` | `true` |
+
+**Failing test = remediation finding, ALWAYS.** There is NO soft "if failures > X% flag to the user" path. ANY failing test (`tests_failing > 0`) is written into `Shipyard/qa-engineer/findings.md` as a remediation finding and feeds the HARDEN remediation chain (`receipt-protocol.md`) exactly like a Critical finding. Never marshal a green completion while a test is red.
+
+**The only non-remediation exit is an explicit, logged override** (the user chose: BLOCK, WITH an "accepted with justification" override). When the owner consciously ships past a breached gate, do NOT silently pass — capture the decision with AskUserQuestion (predefined options, never open-ended) and write an override receipt to the canonical override path `Shipyard/.orchestrator/overrides/<gate>-<id>.json` (NOT under `receipts/`) so Gate 3 finds it:
+
+```json
+{
+  "gate": "coverage_branches | tests_failing | mutation_score | patch_coverage | contract_can_i_deploy | perf_baseline_regression",
+  "id": "<unique override id>",
+  "status": "accepted",
+  "justification": "<why the risk is accepted>",
+  "metrics_at_override": { "<gate>": "<the failing number/state>" },
+  "accepted_by": "<who authorized>",
+  "timestamp": "<ISO-8601>"
+}
+```
+
+A gate with a matching override receipt at `Shipyard/.orchestrator/overrides/<gate>-<id>.json` stops blocking but the decision is carried into `findings.md`. No override file = the gate stays BLOCKED.
 
 ## Brownfield Awareness
 
@@ -117,8 +177,10 @@ tests/
 │       │   └── <repo>.test.ts          # Data access layer tests (mocked DB)
 │       ├── validators/
 │       │   └── <validator>.test.ts     # Input validation tests
-│       └── mappers/
-│           └── <mapper>.test.ts        # DTO / domain mapper tests
+│       ├── mappers/
+│       │   └── <mapper>.test.ts        # DTO / domain mapper tests
+│       └── property/
+│           └── <module>.property.test.ts # Property-based/fuzz tests (validators, parsers, serializers, money, authz)
 ├── integration/
 │   ├── docker-compose.test.yml         # Test dependency containers (Postgres, Redis, Kafka, etc.)
 │   ├── setup.ts                        # Global integration test setup / teardown
@@ -138,8 +200,9 @@ tests/
 │   │   └── provider/
 │   │       └── <provider>.verify.ts           # Provider verification tests
 │   ├── schema/
-│   │   └── <api>.schema.test.ts               # OpenAPI schema validation tests
-│   └── pact-broker.config.ts                  # Pact Broker connection config
+│   │   ├── <api>.schema.test.ts               # OpenAPI schema validation tests
+│   │   └── problem.contract.test.ts           # RFC 9457 Problem error-body contract (against the reusable Problem $ref)
+│   └── pact-broker.config.ts                  # Pact Broker connection + can-i-deploy config
 ├── e2e/
 │   ├── api/
 │   │   ├── flows/
@@ -163,7 +226,8 @@ tests/
 │   │   └── <scenario>.k6.js           # k6 spike test scripts (sudden burst)
 │   ├── baselines/
 │   │   └── <scenario>.baseline.json   # Expected p50/p95/p99 latency, throughput
-│   └── thresholds.js                  # Shared k6 threshold definitions
+│   ├── compare-baseline.js            # Runner devops invokes via `node tests/performance/compare-baseline.js` — reads baselines/<scenario>.baseline.json + budget, exits non-zero on regression
+│   └── thresholds.js                  # k6 thresholds DERIVED FROM docs/architecture/performance-budget.yaml (never hardcoded)
 ├── fixtures/
 │   ├── factories/
 │   │   └── <entity>.factory.ts        # Test data factories (fishery / factory-girl pattern)
@@ -173,8 +237,12 @@ tests/
 │   └── mocks/
 │       ├── <external-api>.mock.ts     # External API mock servers (MSW / nock)
 │       └── <service>.stub.ts          # Internal service stubs
+├── flags/
+│   └── <flag>.matrix.test.ts          # On/off + provider-down safe-default matrix, parameterized over config/feature-flags.yaml
+├── mutation/
+│   └── stryker.config.json            # (or mutmut/PIT/go-mutesting config) — scoped to critical modules, gating min score
 └── coverage/
-    └── thresholds.json                # Per-service and global coverage gates
+    └── thresholds.json                # Single source for coverage numbers — WIRED into the runner (vitest/jest threshold, pytest --cov-fail-under, JaCoCo rule, go-cover gate) so `make test` exits non-zero on breach; includes patch threshold
 ```
 
 ### Workspace Output (`Shipyard/qa-engineer/`)
@@ -233,8 +301,10 @@ Wait for all 5 agents to complete, then run Phase 7 (Test Infrastructure) sequen
 3. Identify all services, modules, and components that need test coverage.
 4. Identify all external dependencies that require mocking or test containers.
 5. Identify critical user flows for E2E coverage.
-6. Identify performance-sensitive endpoints for load testing.
-7. Define coverage thresholds per service (lines, branches, functions).
+6. Identify performance-sensitive endpoints for load testing; read `docs/architecture/performance-budget.yaml` so k6 thresholds derive from it (never hardcode 500ms).
+7. Define coverage thresholds per service (lines, branches, functions) AND the patch-coverage threshold (~80%) — these become the FAILING gate in Phase 7, not a passive JSON file.
+8. Identify **critical modules** (money/billing, authz predicates, validators, parsers, serializers, domain invariants) that require mutation testing + property/fuzz tests (Test Quality Gates).
+9. If `config/feature-flags.yaml` exists, list every flag key for the feature-flag test matrix (on/off + provider-down safe default).
 
 **Output:** Write `Shipyard/qa-engineer/test-plan.md` with the following sections:
 - **Scope** — What is being tested, what is explicitly out of scope
@@ -316,8 +386,9 @@ Write `docker-compose.test.yml` and `setup.ts` to `tests/integration/`.
 3. Write schema validation tests that load the OpenAPI spec and validate every endpoint's actual response against the schema.
 4. Test backward compatibility: if there are versioned APIs, verify old consumers still work with new providers.
 5. For async APIs (events, messages), write contract tests for message schemas using AsyncAPI specs.
-6. Configure Pact Broker connection in `pact-broker.config.ts` (even if the broker URL is a placeholder).
+6. Configure Pact Broker connection in `pact-broker.config.ts` (even if the broker URL is a placeholder). Wire the **`pact-broker can-i-deploy` deployment gate** into the contract CI stage — see "Contract Deployment Gate" — and surface it as `contract_can_i_deploy` in the receipt.
 7. Contract tests must fail if a required field is removed, a type changes, or a new required field is added without consumer agreement.
+8. **Error-response contract (RFC 9457):** every 4xx/5xx interaction asserts the body is `application/problem+json` matching the reusable `Problem` schema (owned by solution-architect) — `{ type, title, status, detail, instance }` plus extensions `trace_id` and `errors[]`. Validate against the OpenAPI `Problem` `$ref`, and assert the `type`/error code comes from the error-catalog module (the single source for runtime + docs) — not an ad-hoc string. A bare `{ code, message }` envelope is a contract failure.
 
 **Output:** Write contract tests to `tests/contract/`.
 
@@ -365,14 +436,14 @@ Write `docker-compose.test.yml` and `setup.ts` to `tests/integration/`.
 2. Load tests: simulate sustained normal traffic. Define realistic ramp-up patterns (e.g., 0 -> 100 VUs over 2 min, hold 10 min, ramp down).
 3. Stress tests: find the breaking point. Ramp VUs aggressively until error rate exceeds 5% or p99 exceeds SLO.
 4. Spike tests: simulate sudden traffic bursts (0 -> 500 VUs in 10 seconds).
-5. Define thresholds in each script: `http_req_duration['p(95)'] < 500`, `http_req_failed < 0.01`.
-6. Write baseline JSON files that record expected performance under normal load. CI compares against these.
-7. Use realistic test data — not the same request repeated. Parameterize with CSV data files or k6 SharedArray.
+5. **Define thresholds by READING `docs/architecture/performance-budget.yaml` — never hardcode `< 500`.** Encode them in `tests/performance/thresholds.js` derived from the budget (see "Performance & Feature-Flag Tests"). Tag metrics by the templated `route` so they join to the `http_request_duration_seconds` / `http_requests_total` instruments in `observability-contract.md`.
+6. Write baseline JSON files (`tests/performance/baselines/<scenario>.baseline.json`) that record expected performance under normal load. **Also EMIT the comparison runner `tests/performance/compare-baseline.js`** — the exact script devops invokes as `node tests/performance/compare-baseline.js`. It reads every `tests/performance/baselines/<scenario>.baseline.json` and the budget, compares the latest k6 run, and **exits non-zero on regression** → sets `perf_baseline_regression: true` in the receipt. devops calls this script verbatim; do not rename it or split it into a per-scenario `baseline.json`.
+7. Use realistic test data — not the same request repeated. Parameterize with CSV data files or k6 SharedArray. Use only synthetic, PII-free data (Test-Data Lifecycle rules).
 8. Include authentication in test scripts (token generation, session management).
 9. Test both read-heavy and write-heavy endpoints separately.
-10. Add custom metrics for business-critical operations (e.g., `order_processing_time`).
+10. Add custom metrics for business-critical operations — but for HTTP RED metrics use the contract names (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight`); never invent a metric name no service emits.
 
-**Output:** Write k6 scripts to `tests/performance/`. Write baseline files to `tests/performance/baselines/`.
+**Output:** Write k6 scripts to `tests/performance/`. Write baseline files to `tests/performance/baselines/<scenario>.baseline.json` and the comparison runner to `tests/performance/compare-baseline.js`.
 
 ---
 
@@ -386,29 +457,154 @@ Write `docker-compose.test.yml` and `setup.ts` to `tests/integration/`.
 - Project CI/CD system (GitHub Actions, GitLab CI, etc.)
 
 **Actions:**
-1. Write `tests/coverage/thresholds.json` with per-service and global coverage gates:
+1. **Coverage is a FAILING gate, not a passive JSON file.** Write `tests/coverage/thresholds.json` as the single source of the numbers:
    ```json
    {
      "global": { "lines": 80, "branches": 75, "functions": 80, "statements": 80 },
      "services": {
        "<service-name>": { "lines": 85, "branches": 80, "functions": 85, "statements": 85 }
-     }
+     },
+     "patch": { "lines": 80 }
    }
    ```
-2. Write `.github/workflows/test.yml` (or `ci/test-config.yml`) with:
-   - **Unit test stage** — runs first, fast, no containers. Fails fast on coverage threshold breach.
-   - **Integration test stage** — starts docker-compose dependencies, runs integration suite, tears down.
-   - **Contract test stage** — runs Pact tests, publishes results to broker.
+   Then **WIRE it into the runner so `make test` exits non-zero on breach** — a JSON file nothing reads does NOT count. Per language, derive the runner config from these numbers (do not hardcode a second copy of the thresholds — generate from `thresholds.json` or keep the runner config the single source and have CI assert they match):
+   - **Vitest/Jest:** `coverage.thresholds` (global + per-glob `100`-style entries) in `vitest.config.ts` / `jest.config.js` — runner exits non-zero below threshold. `make test` runs `vitest run --coverage` / `jest --coverage --coverageThreshold` with **no `|| true`**.
+   - **pytest:** `--cov-fail-under=<lines>` (and `fail_under` in `[tool.coverage.report]` of `pyproject.toml`); branch coverage via `--cov-branch`.
+   - **JaCoCo (JVM):** a `jacocoCoverageVerification` rule (`LINE`/`BRANCH` `minimum`) bound to `check` — Gradle/Maven fails the build below the limit.
+   - **Go:** a `go test ./... -coverprofile` step plus a gate script that parses `go tool cover -func` total and `exit 1` below the threshold.
+   - The `make test` target MUST propagate the runner's non-zero exit (no `|| true`, no `continue-on-error`). CI invokes `make test` as a required step.
+   - **EMIT the `coverage-check` and `patch-coverage` Makefile targets** (CANON #8 — qa owns them). Append them to the **root `Makefile`** (software-engineer generates the base Makefile in phase 05; do NOT create a second Makefile). The devops CI gates invoke `make coverage-check` and `make patch-coverage` verbatim, so both targets MUST exist and MUST exit non-zero on breach — **no `|| true`, no `continue-on-error`**:
+     ```makefile
+     # appended by qa-engineer — coverage gates wired to tests/coverage/thresholds.json
+     coverage-check:
+     	# runs the coverage runner (vitest/jest threshold | pytest --cov-fail-under | JaCoCo rule | go-cover gate)
+     	# against tests/coverage/thresholds.json; exits non-zero below the matching gate
+     	$(COVERAGE_CMD)
+
+     patch-coverage:
+     	# diff-scoped gate (diff-cover / Codecov patch / vitest --changed) at thresholds.json:patch.lines (~80%)
+     	# exits non-zero when new/changed lines fall below the patch threshold
+     	$(PATCH_COVERAGE_CMD)
+     ```
+   - **Patch-coverage required PR check:** the `make patch-coverage` target (above) wraps the diff-scoped coverage gate (`diff-cover` / Codecov/Coveralls patch status / `vitest --changed`); wire it as a **required GitHub status check at ~80%** (`thresholds.json:patch.lines`) — it fails the PR when new/changed lines fall below the patch threshold. NO `|| true`, NO `continue-on-error: true`.
+2. Write `.github/workflows/test.yml` (GitHub Actions templates first, per the chosen default) with:
+   - **Unit test stage** — runs first, fast, no containers. `make test` — fails (non-zero) on coverage threshold breach (item above). NO `|| true`.
+   - **Patch-coverage check** — required PR status at ~80% on changed lines (item above).
+   - **Integration test stage** — starts docker-compose dependencies (pinned image **digests**, item 4 below), runs integration suite, tears down.
+   - **Contract test stage** — runs Pact tests, publishes pacts to the broker, AND runs the **`pact-broker can-i-deploy` deployment gate** (item 4 below) — its non-zero exit blocks deploy.
    - **E2E test stage** — deploys to test environment, runs smoke + full E2E suite.
-   - **Performance test stage** — runs load tests against staging, compares to baselines.
+   - **Performance test stage** — runs k6 against staging; the script's own thresholds (read from `performance-budget.yaml`, Phase 6) fail the stage on baseline regression. NO `|| true`.
+   - **Mutation test stage (NIGHTLY, gating)** — `mutation-nightly.yml` on a `schedule:` cron; runs Stryker/mutmut/PIT/go-mutesting on critical modules and **fails below the configured minimum score** (Test Quality Gates section). Nightly (not per-PR) because mutation runs are slow; the failing run is still a gate, not advisory.
+   - **Randomized test order** — run the unit/integration suites with randomized order (`--shuffle` / `-p randomly` / `-shuffle=on`) so order-dependence fails CI, not prod.
    - Parallel execution: split unit and integration tests across multiple CI runners by service.
-   - Test result artifacts: JUnit XML reports, coverage HTML reports, k6 JSON results.
-   - Flaky test detection: track test pass/fail history, quarantine tests with >5% flake rate.
-   - Retry policy: retry failed E2E tests up to 2 times before marking as failed.
+   - Test result artifacts: JUnit XML reports, coverage + patch-coverage reports, mutation reports, k6 JSON results — the receipt's machine-readable fields are parsed from these.
+   - Flaky test detection: track test pass/fail history, quarantine tests with >5% flake rate. A quarantined test is a remediation finding, not a silent skip.
+   - Retry policy: retry failed E2E tests up to 2 times before marking as failed. **Unit/integration tests are NOT retried** — a non-deterministic unit test is a determinism finding (Test Determinism section), not something to paper over with retries.
 3. Write seed data runner to `tests/fixtures/seed-data/seed-runner.ts`.
 4. Write external API mock configurations to `tests/fixtures/mocks/`.
 
-**Output:** Write CI config to `.github/workflows/test.yml`, coverage thresholds and test infrastructure to `tests/`.
+**Output:** Write CI config to `.github/workflows/test.yml` and `.github/workflows/mutation-nightly.yml`, append the `coverage-check` and `patch-coverage` targets to the root `Makefile`, and write coverage thresholds and test infrastructure to `tests/`.
+
+---
+
+## Test Quality Gates
+
+Line coverage proves a line *ran*, not that a test would *catch a bug on it*. These gates measure whether the tests have teeth. Both are **default-on** per the chosen policy (critical modules); they are FAILING gates wired into CI, not advisory reports.
+
+### Mutation Testing (NIGHTLY gating job)
+
+Mutation testing seeds faults (flip `<` to `<=`, drop a `return`, negate a boolean) and fails the suite if the tests still pass — a surviving mutant is an untested behavior. Run it **scoped to critical modules** (money/billing, authz predicates, validators, parsers/serializers, domain invariants — not the whole tree, which is too slow) on the **nightly `mutation-nightly.yml` schedule cron**, with a minimum score that **exits non-zero on breach**:
+
+| Stack | Tool | Config | Gate |
+|-------|------|--------|------|
+| TS/JS | **Stryker** | `stryker.config.json` — `mutate` globs the critical modules; `thresholds.break` set | `stryker run` exits non-zero below `thresholds.break` |
+| Python | **mutmut** (or `cosmic-ray`) | `setup.cfg`/`pyproject.toml` `[mutmut]` `paths_to_mutate` = critical modules | wrapper parses `mutmut results` score, `exit 1` below min |
+| JVM | **PIT** | `pitest` `targetClasses` = critical packages; `mutationThreshold` | Maven/Gradle fails below `mutationThreshold` |
+| Go | **go-mutesting** | scope to critical packages | wrapper parses score, `exit 1` below min |
+
+Record the score as `mutation_score` in the receipt. The minimum (e.g. 60% overall, higher for money/authz) lives next to the tool config so it is one source.
+
+### Property-Based & Fuzz Testing (mandatory, default-on)
+
+Example-based tests check the cases you thought of; property-based tests generate thousands of inputs and assert an **invariant** (`parse(serialize(x)) == x`, `total == sum(line_items)`, `authorize(user, res)` is monotone in permissions, money never goes negative). These are **mandatory** for the high-risk surfaces below — a critical module without a property test is a finding:
+
+| Surface | Invariants to assert | Tool by stack |
+|---------|----------------------|----------------|
+| **Validators** | accepts iff schema-valid; rejects malformed/boundary/null; never throws on attacker input | fast-check / Hypothesis / jqwik / proptest |
+| **Parsers** | round-trip `parse∘serialize == id`; never panics; bounded output | fast-check / Hypothesis / jqwik / proptest + **native fuzzing** |
+| **Serializers** | round-trip both directions; stable ordering; escapes injection chars | same |
+| **Money / billing** | associativity/commutativity of sums; no negative balances; rounding within tolerance; currency never mixed | same |
+| **Authz predicates** | deny-by-default; monotone in granted permissions; no privilege escalation across tenants | same |
+
+- **Native fuzzing** is required for byte-level parsers/deserializers and any untrusted-input boundary: `go test -fuzz`, `cargo fuzz`/`libFuzzer`, Jazzer (JVM), Atheris (Python), `jest-fuzz`/fast-check for JS. Seed the corpus from real + crashing inputs; failing inputs are committed as regression cases.
+- Property/fuzz tests obey the determinism rules below — **seed the generator** (`fast-check` `seed`, Hypothesis `derandomize`/`@seed`) and print the seed on failure so a counterexample reproduces. A flaky property test is a determinism finding.
+- These run in the normal unit stage (fast, bounded runs) and gate via the coverage + mutation jobs; the deep fuzz campaigns run in the nightly job alongside mutation.
+
+---
+
+## Contract Deployment Gate, Determinism & Test Data
+
+### Pact `can-i-deploy` deployment gate (item: Contract)
+
+Pact consumer/provider verification (Phase 4) proves the contracts *match*; `can-i-deploy` proves it is *safe to release this version*. Add a **deployment gate** in the contract CI stage:
+
+```bash
+pact-broker can-i-deploy \
+  --pacticipant "$SERVICE" --version "$GIT_SHA" \
+  --to-environment production --retry-while-unknown 6 --retry-interval 10
+# non-zero exit = a consumer/provider this version must talk to has NOT verified → BLOCK deploy
+```
+
+Surface its result as `contract_can_i_deploy` in the receipt; `false` blocks `production-ready`. No `|| true`. The broker URL/token come from env/CI secrets, configured once in `pact-broker.config.ts`.
+
+### Test Determinism (rules — flaky tests are findings, not retries)
+
+A test that fails 1-in-50 erodes trust in the whole suite. Every test the QA Engineer writes MUST be deterministic:
+
+- **Frozen clock** — inject a fixed clock / use fake timers (`vi.useFakeTimers`, `freezegun`, `Clock.fixed`, a `Clock` port). Never read wall-clock in an assertion.
+- **Seeded RNG** — seed every generator (test data factories, property-test generators, shuffles); print the seed so failures reproduce.
+- **No `sleep()`** — replace arbitrary sleeps with explicit wait-for-condition polling (element/visibility, API response, DB state). Sleeps are banned in unit/integration; E2E uses framework auto-waiting.
+- **Pinned image DIGESTS** — testcontainers and `docker-compose.test.yml` pin images by **`@sha256:` digest**, not floating tags (`postgres:16` drifts; `postgres@sha256:…` does not). Reproducible across machines and time.
+- **Hermetic network** — no test hits the public internet. External APIs are stubbed (MSW/nock/WireMock) or run as a pinned-digest container. A test that needs `api.stripe.com` is non-hermetic and must be rewritten.
+- **Randomized order** — run suites with randomized order in CI (`--shuffle` / `pytest-randomly` / `go test -shuffle=on`) so hidden ordering coupling fails the build, not production.
+
+A test that violates these is a **determinism finding** written to `findings.md` — fix the test, do NOT mask it with a retry (retries are E2E-only, Phase 7).
+
+### Test-Data Lifecycle
+
+- **Schema-per-worker isolation** — each parallel test worker gets its own database schema/namespace (`test_w<worker_id>`), created in setup and dropped in teardown. No shared mutable schema → no cross-worker collisions, full parallelism.
+- **Synthetic, PII-free data only** — factories and seed data generate synthetic values (Faker with a seeded locale); NEVER copy production data, real emails, real card numbers, or real PII into tests. This aligns with the observability-contract PII rules and `security-testing-protocol.md`. Card-like fields use documented test PANs only.
+- Each test owns its data (transaction rollback or scoped truncate in teardown); reference rows by business identifiers, never auto-increment IDs.
+
+---
+
+## Performance & Feature-Flag Tests (gates, not docs)
+
+### k6 thresholds READ FROM the performance budget (never hardcoded)
+
+`tests/performance/thresholds.js` and each k6 scenario MUST derive their pass/fail thresholds from **`docs/architecture/performance-budget.yaml`** (owned by solution-architect; frontend/qa/sre/devops all read the same numbers). **Do NOT hardcode 500ms.** Read the budget at test-build time and encode k6 thresholds that map directly onto the contract's runtime instruments:
+
+```javascript
+// tests/performance/thresholds.js — generated from docs/architecture/performance-budget.yaml
+// budget["POST /orders"] = { p95_ms: 500, p99_ms: 1200, throughput_rps: 100, error_rate_pct: 1.0 }
+export const thresholds = {
+  // http_req_duration is k6's measure of http_request_duration_seconds (contract instrument)
+  'http_req_duration{route:POST /orders}': ['p(95)<500', 'p(99)<1200'], // ms, from budget
+  'http_req_failed{route:POST /orders}':   ['rate<0.01'],               // = error_rate_pct/100
+  'http_reqs':                             ['rate>=100'],               // throughput_rps
+};
+```
+
+- Tag k6 metrics by the **templated `route`** (e.g. `/orders`, `POST /orders`) — the SAME `route` string used by `http_requests_total` / `http_request_duration_seconds` in `observability-contract.md`, so a load-test breach and a production dashboard point at the same dimension. Never tag by raw URL with IDs.
+- **Baseline-regression encoded as a threshold:** the emitted runner `tests/performance/compare-baseline.js` (invoked by devops as `node tests/performance/compare-baseline.js`) compares the run against `tests/performance/baselines/<scenario>.baseline.json`; a regression beyond the budget fails the run (non-zero exit) → `perf_baseline_regression: true` in the receipt → blocks `production-ready`. When the budget file is missing, treat perf gating as a Critical missing input (do not invent 500ms).
+
+### Feature-flag test matrix (from `config/feature-flags.yaml`)
+
+Every flag in **`config/feature-flags.yaml`** (the OpenFeature registry: `{ key, type, owner, default, created, removal_by }`, client at `libs/shared/feature-flags/`) gets a test matrix so a toggle can't ship a broken state:
+
+1. **On / Off state matrix** — for each flag key, run the affected behavior with the flag forced **on** and forced **off**; both states must pass. Parameterize the suite over the registry so a newly-added flag is automatically covered (a flag with no on/off test is a finding).
+2. **Safe-default-when-provider-down** — simulate the OpenFeature provider being unreachable and assert each flag resolves to its registry **`default`** (fail-static), and the behavior matches the off/safe path — mirroring software-engineer's provider-down test. The provider outage must NOT throw and NOT flip behavior.
+3. **Stale-flag check** — assert no flag is past its `removal_by` date (or surface it as a finding) so temporary flags don't become permanent.
 
 ---
 
@@ -433,6 +629,13 @@ Write `docker-compose.test.yml` and `setup.ts` to `tests/integration/`.
 | 15 | Generating test files without reading the actual implementation first | Tests reference nonexistent functions, wrong parameter names, or incorrect module paths | Always read the source file before writing its test file; match imports, function signatures, and error types exactly |
 | 16 | Auth E2E tests that only check "token returned" | Misses redirect bugs, callback misconfig, and infinite loops that only appear in the full browser flow | Test the complete journey: visit protected page → redirect to login → authenticate → land on original page with authenticated state |
 | 17 | Not testing cross-system flows end-to-end | Payment tests that check "Stripe returns success" but never check "order status is updated and user sees confirmation" miss the integration point bugs | For every multi-system flow (auth, payment, webhook), trace from user action to final visible state |
+| 18 | `thresholds.json` as a passive doc nothing reads | Coverage "gate" never fails a build; numbers drift and rot | Wire it into the runner (vitest/jest threshold, pytest `--cov-fail-under`, JaCoCo rule, go-cover gate) so `make test` exits non-zero on breach; no `\|\| true` |
+| 19 | Hardcoding k6 thresholds (`p(95)<500`) | Diverges from the single perf source; budget changes don't reach the gate | Read `docs/architecture/performance-budget.yaml` into `tests/performance/thresholds.js`; tag by templated `route` to join the observability instruments |
+| 20 | Retrying a flaky unit/integration test to make CI green | Hides a real determinism bug (clock/RNG/order/network) that will surface in prod | Fix the test (frozen clock, seeded RNG, hermetic network, randomized order) and log it as a determinism finding; retries are E2E-only |
+| 21 | Trusting line coverage as proof of test quality | A line can run with zero assertions on its behavior | Add mutation testing (nightly, gating, critical modules) + property/fuzz tests on validators/parsers/serializers/money/authz |
+| 22 | Writing the receipt metrics from memory or rounding "looks passing" | The orchestrator gates `production-ready` on these exact numbers; fabricated metrics ship broken code | Parse `tests_passing`/`tests_failing`/`coverage_*`/`mutation_score` from real runner/coverage/mutation output; ANY failing test is a remediation finding |
+| 23 | Floating image tags in testcontainers / compose | `postgres:16` drifts; a test passes today and fails next month for no code change | Pin by `@sha256:` digest for reproducible, hermetic integration tests |
+| 24 | Copying production data (real emails/PII/PANs) into fixtures | Privacy/compliance violation and brittle tests | Generate synthetic, PII-free data with seeded Faker; schema-per-worker isolation; documented test PANs only |
 
 ---
 
@@ -445,10 +648,21 @@ Before marking the skill as complete, verify:
 - [ ] Every repository/data-access module has integration tests with real database containers
 - [ ] Every API endpoint has at least one contract test validating its schema
 - [ ] The top 5-10 critical user flows have E2E tests
-- [ ] At least 3 performance-sensitive endpoints have k6 load test scripts with baselines
-- [ ] `tests/integration/docker-compose.test.yml` defines all required test containers with pinned versions
-- [ ] `tests/coverage/thresholds.json` defines realistic per-service coverage gates
-- [ ] `.github/workflows/test.yml` orchestrates all test stages with parallelization and artifact collection
+- [ ] At least 3 performance-sensitive endpoints have k6 load test scripts with baselines at `tests/performance/baselines/<scenario>.baseline.json`; thresholds READ FROM `docs/architecture/performance-budget.yaml` (no hardcoded 500ms), tagged by templated `route`; the emitted runner `tests/performance/compare-baseline.js` (devops invokes `node tests/performance/compare-baseline.js`) fails the run on baseline regression
+- [ ] `tests/integration/docker-compose.test.yml` + testcontainers pin images by **`@sha256:` digest** (not floating tags)
+- [ ] `tests/coverage/thresholds.json` is WIRED into the runner (vitest/jest threshold, pytest `--cov-fail-under`, JaCoCo rule, go-cover gate) so `make test` exits non-zero on breach — verified by observing a non-zero exit, no `|| true`
+- [ ] `coverage-check` and `patch-coverage` targets are appended to the root `Makefile` (no second Makefile) and exit non-zero on breach so the devops `make coverage-check` / `make patch-coverage` CI gates resolve
+- [ ] Patch-coverage (~80%) is a REQUIRED PR status check (via `make patch-coverage`) with no `|| true` / `continue-on-error`
+- [ ] Mutation testing scoped to critical modules runs on the NIGHTLY gating job and fails below the minimum score; `mutation_score` recorded in the receipt
+- [ ] Every validator/parser/serializer/money/authz module has property-based tests (+ native fuzzing for byte-level parsers); generators are seeded and print the seed on failure
+- [ ] `pact-broker can-i-deploy` deployment gate wired in the contract stage; `contract_can_i_deploy` in the receipt
+- [ ] 4xx/5xx contract tests assert RFC 9457 `application/problem+json` against the reusable `Problem` schema; `type` comes from the error-catalog
+- [ ] Feature-flag matrix (on/off + provider-down safe default) parameterized over `config/feature-flags.yaml`
+- [ ] Test determinism enforced: frozen clock, seeded RNG, no `sleep()` in unit/integration, hermetic network, randomized order in CI; flaky tests logged as findings (not masked by retries)
+- [ ] Test data is schema-per-worker isolated and synthetic/PII-free (no production data)
+- [ ] `.github/workflows/test.yml` + `.github/workflows/mutation-nightly.yml` orchestrate all stages with parallelization and artifact collection
 - [ ] All test factories are in `tests/fixtures/factories/` and reused across test types
 - [ ] No test file has hardcoded secrets, credentials, or environment-specific values
 - [ ] All tests can run independently and in any order
+- [ ] QA receipt emits machine-readable `tests_passing`, `tests_failing`, `coverage_lines`, `coverage_branches`, `mutation_score` (+ `patch_coverage`, `contract_can_i_deploy`, `perf_baseline_regression`) from real tool output
+- [ ] ANY failing test is written to `findings.md` as a remediation finding; the only non-remediation exit is a logged "accepted with justification" override receipt

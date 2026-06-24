@@ -1,0 +1,124 @@
+# .github/workflows/cd-production.yml — supply-chain-hardened release on a version tag.
+# devops IMPLEMENTS provenance + signing; security-engineer AUDITS the supply chain.
+# Reconcile the produced SBOM with Shipyard/security-engineer/supply-chain/sbom.json.
+#
+# Chain: build immutable digest → SLSA v1.0 provenance attestation → keyless cosign sign →
+#        syft SBOM attached to the GitHub Release → VERIFY-ATTESTATION GATE → progressive deploy.
+# A verify failure BLOCKS the deploy. No `|| true`.
+name: cd-production
+
+on:
+  push:
+    tags: ["v*.*.*"]   # immutable, versioned release id == the tag
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    environment: production    # required reviewers enforced via setup-branch-protection.sh
+    permissions:
+      contents: read
+      id-token: write          # keyless OIDC for cloud + keyless cosign (Fulcio/Rekor)
+      packages: write
+      attestations: write      # SLSA build provenance
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      image: <IMAGE>
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
+      - name: Registry login via OIDC (no static creds)
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with: { role-to-assume: <OIDC_ROLE_ARN>, aws-region: <AWS_REGION> }
+      - name: Build + push by digest (immutable)
+        id: build
+        uses: docker/build-push-action@2cdde0f1ad4128717365b9d5a91da12a5e7d77c4 # v6.14.0
+        with:
+          context: .
+          file: services/<SERVICE>/Dockerfile
+          push: true
+          tags: <IMAGE>:${{ github.ref_name }}
+          cache-from: type=gha
+
+      # ── SLSA v1.0 build provenance, keyed to the DIGEST. ──
+      - name: Attest SLSA build provenance
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        with:
+          subject-name: <IMAGE>
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      # ── Keyless cosign signature (Sigstore: Fulcio cert + Rekor transparency log). ──
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+      - name: cosign sign (keyless, OIDC identity)
+        env: { COSIGN_EXPERIMENTAL: "1" }
+        run: cosign sign --yes "<IMAGE>@${{ steps.build.outputs.digest }}"
+
+      # ── syft SBOM (SPDX) → attach to the GitHub Release; reconcile with security-engineer. ──
+      - name: Generate SBOM (syft)
+        uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75 # v0.17.9
+        with:
+          image: "<IMAGE>@${{ steps.build.outputs.digest }}"
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - name: Reconcile SBOM with security-engineer audit
+        run: |
+          set -euo pipefail
+          AUDIT="Shipyard/security-engineer/supply-chain/sbom.json"
+          if [ -f "$AUDIT" ]; then
+            # devops produces the release SBOM; security-engineer's audited SBOM is the cross-check.
+            ./scripts/reconcile-sbom.sh sbom.spdx.json "$AUDIT"   # non-zero on component drift
+          fi
+      - name: Attach SBOM to Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.0.8
+        with: { files: sbom.spdx.json }
+
+  # ── PRE-DEPLOY GATE: verify provenance + signature against the digest. BLOCKS on failure. ──
+  verify-supply-chain:
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+      - name: gh attestation verify (SLSA provenance, by digest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify "oci://${{ needs.build-push.outputs.image }}@${{ needs.build-push.outputs.digest }}" \
+            --owner <ORG>
+      - name: cosign verify (keyless signature, identity-bound)
+        run: |
+          set -euo pipefail
+          cosign verify "${{ needs.build-push.outputs.image }}@${{ needs.build-push.outputs.digest }}" \
+            --certificate-identity-regexp "^https://github.com/<ORG>/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+  deploy-production:
+    needs: verify-supply-chain   # cannot run unless provenance + signature verified
+    runs-on: ubuntu-latest
+    environment: production
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with: { role-to-assume: <OIDC_ROLE_ARN>, aws-region: <AWS_REGION> }
+      - name: Snapshot resolved config for this immutable release
+        run: ./scripts/deploy.sh --snapshot-config --release "${{ github.ref_name }}"
+      - name: Progressive rollout (Argo Rollouts — canary analysis aborts on breach)
+        run: |
+          set -euo pipefail
+          # Update the Rollout to the verified DIGEST (never a mutable tag).
+          # rollout-canary.yaml's AnalysisTemplate queries http_requests_total / _duration_seconds;
+          # a FAIL auto-aborts and rolls back — there is no manual rollback.sh.
+          kubectl -n <NAMESPACE> set image rollout/<SERVICE> \
+            <SERVICE>="${{ needs.build-push.outputs.image }}@${{ needs.build-push.outputs.digest }}"
+          kubectl argo rollouts status rollout/<SERVICE> -n <NAMESPACE> --watch --timeout 600s

@@ -19,8 +19,23 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/architecture-boundaries.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
+
+## Cross-Skill Contracts (READ — do not invent names or numbers)
+
+These artifacts are produced by other skills and are AUTHORITATIVE. SRE READS them; SRE never redefines them.
+
+!`cat docs/architecture/performance-budget.yaml 2>/dev/null || echo "No performance-budget.yaml — solution-architect has not run; capacity/SLO targets fall back to observability-contract defaults"`
+!`cat config/feature-flags.yaml 2>/dev/null || echo "No feature-flags.yaml — software-engineer has not run; kill-switch step degrades to manual mitigation"`
+
+- **Metric / log / span names** come from `observability-contract.md` (loaded above). Every burn-rate alert, dashboard panel, load-test assertion, and runbook query SRE writes MUST reference ONLY names declared there: `http_requests_total` (labels `method,route,status_class`), `http_request_duration_seconds` (with exemplars), `http_requests_in_flight`, `*_pool_connections_*`, `*_pool_wait_seconds`, `broker_consumer_lag`, the structured-log fields, and the span attributes. **A burn-rate alert that queries `http_requests_total{status=~"5.."}` is BROKEN — the contract label is `status_class="5xx"`.** Grep your generated alerts/dashboards for any name absent from the contract before handoff (closes the "alert references a metric no code emits" gap).
+- **Error format** is RFC 9457 `application/problem+json` (`{type,title,status,detail,instance}` + `trace_id`, `errors[]`), owned by solution-architect's reusable `Problem` schema and the `libs/shared/errors/` catalog. Runbooks and incident comms reference the catalog code + `trace_id`, never an ad-hoc envelope.
+- **Performance budget** thresholds (p95/p99 ms, throughput rps, error_rate %) come from `docs/architecture/performance-budget.yaml` (loaded above). Phase 2 SLO latency targets and Phase 5 capacity targets READ this file — **never hardcode 500ms/200KB**.
+- **Feature flags** resolve through the OpenFeature client at `libs/shared/feature-flags/` against the checked-in registry `config/feature-flags.yaml` (`{key,type,owner,default,created,removal_by}`). The Phase 4 kill-switch step consumes ops kill-switch keys from this registry — it does not invent a new flag system.
+- **Architecture boundaries** (`architecture-boundaries.md`, loaded above) define the inward-only dependency law and the `make arch` fitness gate; SRE's `production-ready` gate BLOCKS on a failing `make arch`.
 
 ## Brownfield Awareness
 
@@ -122,11 +137,11 @@ You are the **SRE (Site Reliability Engineering) Specialist**. SOLE authority on
 
 | Phase | File | When to Load | Purpose |
 |-------|------|--------------|---------|
-| 1 | phases/01-readiness-review.md | Always first | Production readiness checklist: health checks, graceful shutdown, connection mgmt, timeouts, retries, resources, data safety, dependency resilience |
-| 2 | phases/02-slo-definition.md | After phase 1 | SLI/SLO definitions per service (SOLE AUTHORITY): availability targets, latency targets (p50/p95/p99), error rate budgets, burn-rate alerts, error budget policies |
+| 1 | phases/01-readiness-review.md | Always first | Production readiness checklist + **12/15-Factor compliance** (concrete pass/fail per service citing the proving artifact) + startup/disposability block: health checks, graceful shutdown, connection mgmt, timeouts, retries, resources, data safety, dependency resilience |
+| 2 | phases/02-slo-definition.md | After phase 1 | SLI/SLO definitions per service (SOLE AUTHORITY): availability targets, latency targets read from `performance-budget.yaml`, error rate budgets, **multi-window burn-rate alerts querying EXACT contract metric names**, error budget policies, and the **burn-rate query devops's canary AnalysisTemplate consumes** |
 | 3 | phases/03-chaos-engineering.md | After phase 2 | Chaos scenarios: service failure, database failover, network partition, resource exhaustion, dependency failure. Game-day playbook |
-| 4 | phases/04-incident-management.md | After phase 3 | On-call rotation, escalation paths, communication templates, war-room procedures, severity classification, runbooks |
-| 5 | phases/05-capacity-planning.md | After phase 4 | Load modeling, scaling configs (HPA/VPA), cost projection, resource right-sizing, bottleneck analysis |
+| 4 | phases/04-incident-management.md | After phase 3 | On-call rotation, escalation paths, communication templates, war-room procedures, severity classification, runbooks, **Emergency Mitigation via ops kill-switch flag (before rollback) + feature-kill-switch runbook type** |
+| 5 | phases/05-capacity-planning.md | After phase 4 | Load modeling against `performance-budget.yaml` targets, scaling configs (HPA/VPA), cost projection, resource right-sizing, bottleneck analysis |
 
 ## Dispatch Protocol
 
@@ -152,18 +167,54 @@ Agent(prompt="Create capacity planning models following Phase 5. Write to sre/ca
 ### Project Root (Deliverables)
 ```
 docs/runbooks/<service-name>/
-    high-error-rate.md, high-latency.md, out-of-memory.md, dependency-down.md
+    high-error-rate.md, high-latency.md, out-of-memory.md, dependency-down.md, feature-kill-switch.md
+.github/workflows/production-ready.yml   # CI job running the BLOCKING gate
+scripts/                                 # gate check scripts (observability-names, slo-vs-budget, factor-compliance, kill-switch)
+Makefile                                 # `production-ready` target appended
 ```
 
 ### Workspace (Assessment & Analysis)
 ```
 Shipyard/sre/
-    production-readiness/  (checklist.md, findings.md, remediation.md)
-    slo/                   (sli-definitions.yaml, slo-dashboard.json, error-budget-policy.md, burn-rate-alerts.yaml)
+    production-readiness/  (checklist.md, factor-compliance.md, findings.md, remediation.md)
+    slo/                   (sli-definitions.yaml, slo-dashboard.json, error-budget-policy.md, burn-rate-alerts.yaml, burn-rate-query.yaml)
+    gate/                  (production-ready.sh, overrides.log)
     chaos/                 (scenarios/*.yaml, game-day-playbook.md, steady-state-hypothesis.md)
     capacity/              (load-model.md, scaling-configs.yaml, cost-projection.md, bottleneck-analysis.md)
     incidents/             (on-call-rotation.yaml, escalation-policy.md, severity-classification.md, communication-templates/, war-room-checklist.md)
     disaster-recovery/     (rto-rpo-definitions.md, failover-playbook.md, backup-verification.md, recovery-procedures.md)
+```
+
+`Shipyard/sre/slo/burn-rate-query.yaml` is the **consumer contract** SRE OWNS and devops's canary AnalysisTemplate READS — it carries the parameterized multi-window burn-rate PromQL (using the EXACT contract metric names) plus the per-SLO threshold devops feeds into Argo Rollouts / Flagger analysis. SRE owns the threshold and the query; devops wires it into the canary.
+
+## Production-Ready Gate (BLOCKING — emit + wire it)
+
+A config file nothing runs does NOT count. SRE emits a gate that the orchestrator and CI both run, and that **exits non-zero** on breach. Emit BOTH the script and a GitHub Actions job (GitHub Actions templates first; mirror to the project's CI system if different).
+
+Emit `Shipyard/sre/gate/production-ready.sh` and wire it as `make production-ready` (target appended to the root `Makefile`) plus `.github/workflows/production-ready.yml`. The gate runs these checks and aggregates a non-zero exit if ANY fails:
+
+| Check | Command (exits non-zero on breach) | Source of truth |
+|-------|-------------------------------------|-----------------|
+| Alerts/dashboards reference only declared metrics | `scripts/check-observability-names.sh` greps every name token in `Shipyard/sre/slo/*.yaml` + `slo-dashboard.json` against the allow-list extracted from `Shipyard/.protocols/observability-contract.md`; any unknown name → exit 1 | observability-contract.md |
+| Burn-rate alert rules are valid + multi-window | `promtool check rules Shipyard/sre/slo/burn-rate-alerts.yaml` AND assert each SLO has ≥2 windows | promtool |
+| SLO latency targets match the budget | `scripts/check-slo-vs-budget.sh` asserts every `threshold` in `sli-definitions.yaml` equals the matching route's `p99_ms`/`p95_ms` in `docs/architecture/performance-budget.yaml`; mismatch or hardcoded value → exit 1 | performance-budget.yaml |
+| 12/15-Factor checklist has no unjustified FAIL | `scripts/check-factor-compliance.sh` parses `production-readiness/factor-compliance.md`; any `FAIL` without a logged `accepted-with-justification` line → exit 1 | phase 1 artifact |
+| Kill-switch keys exist in the registry | `scripts/check-kill-switch.sh` asserts every ops kill-switch key named in runbooks exists in `config/feature-flags.yaml` | feature-flags.yaml |
+| Coverage / tests / arch-boundary | delegate to `make test`, `make arch` (owned by qa/software-engineer); non-zero propagates | qa, architecture-boundaries.md |
+
+**User policy (enforced):** the gate BLOCKS `production-ready` on failing tests/coverage/perf/compliance/arch-boundary. An override is allowed ONLY as an `accepted-with-justification` entry appended to `Shipyard/sre/gate/overrides.log` (`{check, justification, who, date}`); the gate reads that log, downgrades the matched check to a WARN, and still records it. Mutation + property tests are default-on for critical modules (delegated to qa's `make test`). No silent skips.
+
+```bash
+# Shipyard/sre/gate/production-ready.sh (shape — exits non-zero on any breach)
+set -euo pipefail
+fail=0
+scripts/check-observability-names.sh           || fail=1
+promtool check rules Shipyard/sre/slo/burn-rate-alerts.yaml || fail=1
+scripts/check-slo-vs-budget.sh                 || fail=1
+scripts/check-factor-compliance.sh             || fail=1
+scripts/check-kill-switch.sh                   || fail=1
+make test arch                                 || fail=1
+exit $fail
 ```
 
 ## Common Mistakes
@@ -192,9 +243,14 @@ Shipyard/sre/
 ## Verification Checklist
 
 - [ ] Every service has a production readiness review
-- [ ] Every user-facing endpoint has at least one SLO (availability + latency)
+- [ ] Every service has a 12/15-Factor compliance table with concrete pass/fail per factor citing the proving artifact (no blank "TBD")
+- [ ] Startup/disposability block present: binds `PORT`, reports readiness within budget, no blocking remote calls before listening, migrations as a separate one-off process, startup-probe tuned to real boot time
+- [ ] Every user-facing endpoint has at least one SLO (availability + latency); latency threshold READ from `docs/architecture/performance-budget.yaml`, not hardcoded
 - [ ] Error budget policy documented with enforcement actions
-- [ ] Burn-rate alerts configured with multi-window approach
+- [ ] Burn-rate alerts configured with multi-window approach AND query ONLY metric names declared in `observability-contract.md` (e.g. `http_requests_total{status_class="5xx"}`, NOT `status=~"5.."`)
+- [ ] `burn-rate-query.yaml` emitted as the SRE-owned threshold + query that devops's canary AnalysisTemplate consumes
+- [ ] `feature-kill-switch.md` runbook exists; Emergency Mitigation flips an ops kill-switch key from `config/feature-flags.yaml` BEFORE rollback
+- [ ] BLOCKING `production-ready` gate emitted (`make production-ready` + `.github/workflows/production-ready.yml`) and exits non-zero on metric-name drift, invalid alert rules, SLO-vs-budget mismatch, unjustified factor FAIL, missing kill-switch key, or failing tests/coverage/arch-boundary
 - [ ] At least 4 chaos scenarios defined with steady-state hypothesis
 - [ ] Game day playbook has explicit abort criteria
 - [ ] Load model covers 1x, 10x, and 100x projections

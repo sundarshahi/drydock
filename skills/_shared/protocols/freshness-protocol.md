@@ -105,6 +105,7 @@ Different agents encounter different volatile data:
 | **DevOps** | Docker base images, Terraform providers, CI/CD action versions, cloud CLI syntax |
 | **SRE** | Monitoring tool APIs (Datadog/Grafana/PagerDuty), cloud service quotas, Kubernetes versions |
 | **Security Engineer** | CVEs, deprecated crypto, OWASP updates, auth provider changes, supply chain advisories |
+| **Compliance Officer** | Regulatory control IDs, article/section numbers, requirement text, and statutory clocks (notification/retention deadlines) — VOLATILE. Verify live against the official source (regulation text, framework body) this session; NEVER recall from memory. |
 | **Data Scientist** | LLM model IDs/pricing/context windows, ML framework APIs, vector DB APIs, embedding model specs |
 | **Solution Architect** | Cloud service capabilities, managed service pricing, regional availability, compliance updates |
 | **Code Reviewer** | Linting rule changes, language version features, framework deprecations |
