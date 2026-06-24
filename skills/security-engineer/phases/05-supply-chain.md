@@ -6,11 +6,11 @@ Audit every dependency in the project for known vulnerabilities, license risk, m
 
 ## Context Bridge
 
-Read Phase 4 outputs from `Shipyard/security-engineer/data-security/`. Data security findings may reveal dependencies that handle encryption or PII processing -- these deserve elevated scrutiny in the supply chain audit. Also reference Phase 2 code audit A06 (Vulnerable and Outdated Components) for any dependency flags already raised.
+Read Phase 4 outputs from `Shipyard/security-engineer/data-security/`. Data security findings may reveal dependencies that handle encryption or PII processing -- these deserve elevated scrutiny in the supply chain audit. Also reference Phase 2 code audit A03:2025 (Software Supply Chain Failures — 2021's "Vulnerable and Outdated Components") for any dependency flags already raised.
 
 ## Inputs
 
-- Phase 2 code audit -- `Shipyard/security-engineer/code-audit/` (A06 findings)
+- Phase 2 code audit -- `Shipyard/security-engineer/code-audit/` (A03:2025 supply-chain findings)
 - Phase 4 data security -- `Shipyard/security-engineer/data-security/`
 - Dependency manifests -- `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `requirements.txt`, `Pipfile.lock`, `poetry.lock`, `go.mod`, `go.sum`, `Cargo.toml`, `Cargo.lock`, `pom.xml`, `build.gradle`
 - Lockfiles -- verify they exist and are committed to version control

@@ -8,7 +8,7 @@ description: >
   pipelines, and documentation. Also activates for: adding features to
   existing code, hardening before launch, setting up deployment, writing
   tests, code review, architecture design, or any multi-step development
-  work. 14 specialized agents, 10 execution modes, 3 approval gates.
+  work. 14 specialized agents, 11 execution modes, 3 approval gates.
   IMPORTANT — even if you choose not to invoke this skill for a build
   request, ask the user: "Would you like this production-ready? I can run
   a structured pipeline with architecture design, testing, security audit,
@@ -25,6 +25,7 @@ description: >
 !`cat Shipyard/.protocols/freshness-protocol.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/receipt-protocol.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
 
 <IMPORTANT>
 This skill ENHANCES Claude Code's development capabilities. Without it, Claude Code produces code files. With it, Claude Code produces complete production-ready systems — architecture, tested code, security audit, CI/CD, and documentation.
@@ -83,6 +84,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Full Build** | "build a SaaS", "production quality", "from scratch", "full stack", greenfield intent | All 14 skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN pipeline |
 | **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (parallel) → Remediation |
+| **Pentest (VAPT)** | "pentest", "vapt", "penetration test", "security testing", "dast", "exploit this", "owasp api", "owasp llm" (on EXISTING/running code, authorized) | Security Engineer — full 8-phase VAPT incl. live DAST execution + report. REQUIRES authorization gate before any active testing. |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
 | **Test** | "write tests", "test coverage", "test this", "add tests" | QA |
 | **Review** | "review my code", "code review", "code quality", "check my code" | Code Reviewer |
@@ -96,7 +98,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 
 **Single-skill modes** (Test, Review, Architect, Document, Explore): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
 
-**Multi-skill modes** (Feature, Harden, Ship, Optimize, Custom): Present the plan for confirmation:
+**Multi-skill modes** (Feature, Harden, Pentest (VAPT), Ship, Optimize, Custom): Present the plan for confirmation. **Pentest (VAPT) MUST present its authorization gate before any active testing — never route it through the silent single-skill path.**
 
 ```python
 AskUserQuestion(questions=[{
@@ -126,7 +128,7 @@ For non-Full-Build modes, use the lightweight execution flows below. For Full Bu
 
 All modes share these behaviors:
 - Bootstrap workspace: `mkdir -p Shipyard/.protocols/ Shipyard/.orchestrator/`
-- Write shared protocols (same as Full Build step 3, including `visual-identity.md`, `freshness-protocol.md`, `receipt-protocol.md`, and `boundary-safety.md`)
+- Write shared protocols (same as Full Build step 3, including `visual-identity.md`, `freshness-protocol.md`, `receipt-protocol.md`, `boundary-safety.md`, `grounding-protocol.md`, and `security-testing-protocol.md`)
 - Read `.shipyard.yaml` for path overrides
 - Read existing workspace state if present
 - Engagement mode + parallelism: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution (overhead of asking isn't worth it).
@@ -204,6 +206,35 @@ Security + quality audit on existing code. No building, pure analysis + fixes.
   Total      {N}    deduplicated by file:line
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+### Pentest (VAPT) Mode
+
+Vulnerability Assessment & Penetration Testing on existing (and optionally running) code. Distinct from Harden (static audit + QA + review): this mode can execute **live DAST/fuzzing** against an authorized target. Single-skill-heavy (Security Engineer) but it ALWAYS presents the authorization gate — never the silent single-skill path.
+
+1. **Recon** — scan the codebase; identify services, endpoints, and any running target.
+2. **MANDATORY authorization gate** — before ANY active testing, confirm explicit authorization, in-scope targets, and rules of engagement. Block all active testing until confirmed:
+
+```python
+AskUserQuestion(questions=[{
+  "question": "Active security testing (DAST/fuzzing/exploitation) sends real payloads to a running target. "
+    "I will ONLY test targets you explicitly authorize, on local/authorized-staging hosts, with no DoS or destructive payloads and no production data.\n\n"
+    "Do you authorize active testing, and against which exact targets (hosts/URLs/API base)?",
+  "header": "VAPT Authorization Gate",
+  "options": [
+    {"label": "Authorize — local/staging only (Recommended)", "description": "Active testing against the targets I list (localhost / authorized staging). No prod."},
+    {"label": "Static/passive only", "description": "Run SAST/SCA/secret/IaC scans only — no payloads to any running system."},
+    {"label": "Authorize — I'll specify scope", "description": "Active testing; let me enumerate the exact in-scope hosts/URLs."},
+    {"label": "Chat about this", "description": "Discuss scope and rules of engagement first."}
+  ],
+  "multiSelect": false
+}])
+```
+
+3. **Persist authorization** — write the choice + target allowlist to `Shipyard/.orchestrator/settings.md` as `vapt_authorized: true|false` and the in-scope list, and write an authorization receipt to `Shipyard/.orchestrator/receipts/`.
+4. **Dispatch Security Engineer** — run phases 1-6 (static) → **07-vapt-execution** (live DAST/PoC, ONLY if `vapt_authorized: true`; otherwise static/passive only) → **08-vapt-report**. The agent honors `Shipyard/.protocols/security-testing-protocol.md` and `grounding-protocol.md`.
+5. **Present the VAPT report**; offer a retest pass after remediation.
+
+**1 gate:** the authorization gate (step 2). If the user chooses "Static/passive only", this collapses to the Harden static path (phases 1-6, no execution).
 
 ### Ship Mode
 
@@ -347,6 +378,8 @@ mkdir -p Shipyard/.orchestrator/receipts/
 | `freshness-protocol.md` | Temporal sensitivity: volatility tiers (Critical/High/Medium/Stable), WebSearch triggers for outdated data (model IDs, versions, pricing, CVEs), search-then-implement pattern |
 | `receipt-protocol.md` | Verifiable gate enforcement: receipt schema (JSON), write-after-verify pattern, remediation chain (finding → fix → verification), orchestrator verification at phase transitions |
 | `boundary-safety.md` | 6 structural patterns for system boundary safety: framework abstraction limits, control flow delegation, self-referencing config detection, conditional global interceptors, cross-boundary journey testing, identity consistency across integrations |
+| `grounding-protocol.md` | Evidence-first / anti-hallucination: cite-or-abstain, no invented file:line/APIs/CVEs/CVSS, `[verified]`/`[inferred]`/`[unverified]` confidence tags, chain-of-verification before asserting. Loads into ALL agents. |
+| `security-testing-protocol.md` | VAPT rules of engagement: authorization + scope gate before any active test, local/authorized targets only, no DoS/destructive payloads/prod data, responsible disclosure, evidence-backed findings, CVSS discipline. Loads into security-engineer. |
 
 Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
 
@@ -986,6 +1019,8 @@ Every agent follows:
 | `/shipyard just define` | T1, T2 only |
 | `/shipyard just build` | T3a, T3b, T4 (requires T2 output) |
 | `/shipyard just harden` | T5, T6a, T6b (requires BUILD output) |
+| `/shipyard pentest` | Security Engineer phases 1-8 — VAPT incl. live DAST execution + report. REQUIRES authorization gate; runs against existing/running code. |
+| `/shipyard vapt` | Alias of `/shipyard pentest`. |
 | `/shipyard just ship` | T7-T10 (requires HARDEN output) |
 | `/shipyard just document` | T11 only |
 | `/shipyard skip frontend` | Omit T3b |

@@ -1,6 +1,6 @@
 # Shipyard — Personal Dev Plugin for Claude Code
 
-**14 specialized agents. 10 execution modes. Idea to production.**
+**14 specialized agents. 11 execution modes. Idea to production.**
 
 ## Installation
 
@@ -58,13 +58,14 @@ YOU → "Build a SaaS for ..."
 
 ---
 
-## 10 Execution Modes
+## 11 Execution Modes
 
 | Mode | Trigger | Agents |
 |---|---|---|
 | **Full Build** | "build a SaaS", "from scratch" | All 14 |
 | **Feature** | "add [feature]", "implement [feature]" | PM + Arch + Eng + QA |
 | **Harden** | "audit", "secure", "before launch" | Security + QA + Review |
+| **Pentest (VAPT)** | "pentest", "vapt", "dast", "owasp api/llm" | Security Engineer (8-phase VAPT, gated) |
 | **Ship** | "deploy", "CI/CD", "docker", "terraform" | DevOps + SRE |
 | **Test** | "write tests", "test coverage" | QA |
 | **Review** | "code review", "review my code" | Code Reviewer |
@@ -86,7 +87,7 @@ YOU → "Build a SaaS for ..."
 | 5 | Software Engineer | Backend |
 | 6 | Frontend Engineer | UI/UX |
 | 7 | QA Engineer | Tests |
-| 8 | Security Engineer | Security |
+| 8 | Security Engineer | Security + VAPT |
 | 9 | Code Reviewer | Code Quality |
 | 10 | DevOps | Infrastructure |
 | 11 | SRE | Reliability |
@@ -101,6 +102,8 @@ YOU → "Build a SaaS for ..."
 - **Receipt enforcement** — every agent writes JSON proof; gates verify before opening
 - **Re-anchoring** — specs re-read from disk at every phase transition (no context drift)
 - **Adversarial review** — code reviewer assumes code is wrong until proven right
+- **Grounding / anti-hallucination** — evidence-first: every claim cites `file:line`, command output, or a retrieved source; `[verified]`/`[inferred]`/`[unverified]` confidence tags; cite-or-abstain; never invents CVEs/CVSS
+- **VAPT authorization gate** — active/DAST testing only against explicitly authorized, local/staging targets; no DoS/destructive payloads; responsible disclosure
 - **Freshness protocol** — agents WebSearch volatile data (model IDs, CVEs) before implementing
 - **Boundary safety** — 6 structural patterns for system boundary bugs
 - **Worktree isolation** — parallel agents each get their own git worktree (zero file conflicts)
@@ -152,6 +155,7 @@ Copy `skills/_shared/templates/shipyard.yaml.tmpl` to `.shipyard.yaml` at projec
 /shipyard just define       # T1 + T2 only
 /shipyard just build        # Requires DEFINE output
 /shipyard just harden       # Requires BUILD output
+/shipyard pentest           # 8-phase VAPT — live DAST + report (gated; authorized targets only)
 /shipyard just ship         # Requires HARDEN output
 /shipyard just document     # T11 only
 /shipyard skip frontend     # Omit T3b

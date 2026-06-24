@@ -6,7 +6,7 @@ Trace every authentication flow end-to-end and verify every authorization decisi
 
 ## Context Bridge
 
-Read Phase 2 outputs from `Shipyard/security-engineer/code-audit/`. The OWASP A01 (Broken Access Control) and A07 (Identification and Authentication Failures) findings from the code audit provide the starting point. This phase goes deeper with dedicated auth flow tracing.
+Read Phase 2 outputs from `Shipyard/security-engineer/code-audit/`. The OWASP A01:2025 (Broken Access Control) and A07:2025 (Authentication Failures) findings from the code audit provide the starting point. This phase goes deeper with dedicated auth flow tracing.
 
 ## Inputs
 
