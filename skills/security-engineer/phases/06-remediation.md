@@ -21,7 +21,7 @@ Every finding from every phase feeds into this plan. Do not re-analyze -- aggreg
 
 Collect every finding from all phases into a unified list:
 - Assign a unique finding ID to each (e.g., SEC-001, SEC-002)
-- Deduplicate findings that appear in multiple phases (e.g., A02 crypto finding in code audit that also appears in data security encryption audit)
+- Deduplicate findings that appear in multiple phases (e.g., A04:2025 crypto finding in code audit that also appears in data security encryption audit)
 - When duplicates exist, keep the more detailed version and cross-reference the other
 - Preserve the original phase and source file for traceability
 

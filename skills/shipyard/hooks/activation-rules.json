@@ -70,9 +70,10 @@
     },
     {
       "skill": "security-engineer",
-      "keywords": ["security audit", "owasp", "threat model", "vulnerability"],
+      "keywords": ["security audit", "owasp", "threat model", "vulnerability", "pentest", "vapt", "penetration test", "dast", "security testing", "owasp api", "owasp llm"],
       "intent_patterns": [
-        "(?:audit|review|check).*(?:security|vulnerability|owasp)"
+        "(?:audit|review|check).*(?:security|vulnerability|owasp)",
+        "(?:pentest|vapt|penetration test|dast|security testing)"
       ],
       "priority": "medium"
     },

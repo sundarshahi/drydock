@@ -16,6 +16,7 @@ description: >
 !`cat Shipyard/.protocols/receipt-protocol.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
 

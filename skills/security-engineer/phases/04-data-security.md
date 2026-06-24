@@ -6,11 +6,11 @@ Inventory every piece of sensitive data in the system, verify encryption at rest
 
 ## Context Bridge
 
-Read Phase 3 outputs from `Shipyard/security-engineer/auth-review/`. Token management findings feed directly into data security -- tokens are sensitive data. Also reference Phase 2 code audit findings for A02 (Cryptographic Failures) as the starting point for encryption analysis.
+Read Phase 3 outputs from `Shipyard/security-engineer/auth-review/`. Token management findings feed directly into data security -- tokens are sensitive data. Also reference Phase 2 code audit findings for A04:2025 (Cryptographic Failures) as the starting point for encryption analysis.
 
 ## Inputs
 
-- Phase 2 code audit -- `Shipyard/security-engineer/code-audit/` (A02 findings)
+- Phase 2 code audit -- `Shipyard/security-engineer/code-audit/` (A04:2025 cryptographic findings)
 - Phase 3 auth review -- `Shipyard/security-engineer/auth-review/`
 - Data schemas -- `schemas/` (ERD, migrations, data models)
 - Implementation code -- data access layers, ORM models, API response serializers

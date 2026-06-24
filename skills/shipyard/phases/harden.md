@@ -54,7 +54,10 @@ Use the Skill tool to invoke 'shipyard:security-engineer' to load your complete 
 No other skill performs security review. This is YOUR exclusive domain.
 Read all implementation code: services/, frontend/, infrastructure/
 Read protocols from: Shipyard/.protocols/
-Perform STRIDE threat modeling + OWASP Top 10 audit + dependency scan.
+Perform STRIDE threat modeling + OWASP Top 10 (2025) audit + dependency scan.
+Load and honor Shipyard/.protocols/grounding-protocol.md and Shipyard/.protocols/security-testing-protocol.md.
+This is HARDEN (static) mode: run security phases 1-6 ONLY. Do NOT run phases 07-vapt-execution or 08-vapt-report here — live/active testing requires the explicit authorization gate enforced by the orchestrator's Pentest (VAPT) mode (it sets vapt_authorized after the gate).
+Every finding must carry file:line evidence and the standards tag block (CVSS/CWE/OWASP 2025/WSTG/ASVS); no fabricated CVE/CVSS; tag every claim [verified]/[inferred]/[unverified].
 Write findings to: Shipyard/security-engineer/
 Auto-fix Critical/High issues with regression tests.
 Document Medium/Low for remediation plan.
