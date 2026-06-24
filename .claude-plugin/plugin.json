@@ -1,0 +1,10 @@
+{
+  "name": "shipyard",
+  "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 14 specialized agents cover architecture, tested backend/frontend, security audit, CI/CD, and documentation — from idea to ship.",
+  "version": "5.4.0",
+  "author": {
+    "name": "sundarshahi"
+  },
+  "license": "MIT",
+  "keywords": ["shipyard", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "sre", "ai", "ml", "llm"]
+}
