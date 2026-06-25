@@ -1,0 +1,94 @@
+# Behavioral routing fixtures for Shipyard (LOCAL ONLY, never a CI gate).
+#
+# Each case is an unambiguous user prompt plus the entry skill the router
+# SHOULD pick. Expectations are derived from the real user-facing SKILL.md
+# descriptions of the 6 entry skills:
+#   - shipyard           : full idea->production build ("build/create X")
+#   - product-manager    : turn a product idea into requirements / PRD / scope
+#   - solution-architect : architecture / system-design / tech-stack decisions
+#   - polymath           : cross-domain research / explore-before-coding /
+#                          "explain this codebase" thinking-partner work
+#   - skill-maker        : create a new reusable Claude Code skill/plugin
+#   - compliance-officer : which regulations apply / SOC 2 / GDPR / HIPAA scoping
+#
+# The 11 worker skills are "only invoked by the shipyard orchestrator — not for
+# standalone use", so a worker-shaped user request should route to `shipyard`,
+# NOT directly to the worker. (See worker_routes_to_shipyard below.)
+#
+# Matching at runtime is loose/substring because temp=1.0 routing is
+# non-deterministic.
+
+- id: full_build
+  prompt: >
+    Build me a production-ready URL shortener web app with analytics, auth,
+    and a deploy pipeline. Take it from idea all the way to ship.
+  expect_skill: shipyard
+  note: Canonical "build me X, production-ready, end-to-end" request.
+
+- id: add_feature_existing
+  prompt: >
+    I have an existing Node API. Add a rate-limiting feature, write tests for
+    it, and harden it before we launch.
+  expect_skill: shipyard
+  note: Multi-step build/harden work on existing code -> orchestrator.
+
+- id: requirements_prd
+  prompt: >
+    I have a rough idea for a B2B invoicing product. Help me turn it into
+    formal requirements — user stories, acceptance criteria, and priorities.
+    Don't write any code yet.
+  expect_skill: product-manager
+  note: PRD / requirements / scoping a product idea.
+
+- id: architecture_decision
+  prompt: >
+    For a multi-tenant SaaS expecting heavy write load, help me decide the
+    architecture: tech stack, data model, and API contract shape. Design only,
+    no implementation.
+  expect_skill: solution-architect
+  note: Pure system-design / tech-stack decision.
+
+- id: explain_codebase
+  prompt: >
+    I just joined this team and inherited an unfamiliar codebase. Walk me
+    through how it's structured and explain what the main pieces do.
+  expect_skill: polymath
+  note: Onboarding / explain-this-codebase thinking-partner work.
+
+- id: research_options
+  prompt: >
+    I'm not sure whether to build a mobile app or a PWA for my idea. Research
+    the trade-offs across cost, reach, and effort and help me decide before I
+    commit to writing code.
+  expect_skill: polymath
+  note: Cross-domain research / explore-before-coding.
+
+- id: create_skill
+  prompt: >
+    I keep doing the same repetitive workflow by hand. Help me package it into
+    a reusable Claude Code skill I can share with my team.
+  expect_skill: skill-maker
+  note: Author a new Claude Code skill/plugin.
+
+- id: compliance_scoping
+  prompt: >
+    My product stores health records for US patients and takes card payments.
+    Which regulations apply to me — HIPAA, PCI-DSS, SOC 2 — and what do I need?
+  expect_skill: compliance-officer
+  note: Per-product regulatory scoping.
+
+- id: gdpr_question
+  prompt: >
+    We're launching an EU-facing analytics product. Do we need to worry about
+    GDPR, and which controls would be mandatory for us?
+  expect_skill: compliance-officer
+  note: Regulatory applicability question (GDPR).
+
+- id: worker_routes_to_shipyard
+  prompt: >
+    Set up a full CI/CD pipeline and Kubernetes deployment for my service, with
+    observability and a hardened production DevOps setup.
+  expect_skill: shipyard
+  note: >
+    DevOps is a WORKER skill (no standalone use). A worker-shaped request must
+    route to the shipyard orchestrator, not directly to devops.
