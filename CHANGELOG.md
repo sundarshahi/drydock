@@ -2,6 +2,27 @@
 
 All notable changes to **Shipyard**.
 
+## [Unreleased]
+
+### Testing
+- **Eval harness added** — a two-tier evaluation suite under `evals/`.
+  - **Deterministic tier (free, gates every PR)** — pure-Python structural
+    invariants over the repo, run by `evals/run_deterministic.py` and wired into
+    CI via [`.github/workflows/evals.yml`](.github/workflows/evals.yml) (also
+    `make evals`). No API key and no Claude CLI. Guards: loader-resolution shape
+    (the belt-and-suspenders protocol fallback chain), dead-tool regression
+    (`TeamCreate`/`TeamDelete`/`smart_outline`/`smart_search`/`smart_unfold`
+    never reappear as live calls), agent/skill cross-reference (the 11
+    `agents/*.md` map 1:1 to worker skills; the 4 main-context skills have no
+    agent file), manifest integrity (`plugin.json`/`marketplace.json` version
+    agreement), and YAML frontmatter validity.
+  - **Behavioral tier (local-only)** — non-deterministic routing checks driven
+    by `claude -p` (`make evals-behavioral`). Uses your local Claude Code login
+    and spends usage; intentionally **NOT** in CI (no API key, `temperature=1.0`
+    is non-deterministic).
+- No plugin behavior change: dev tooling only, so `plugin.json` /
+  `marketplace.json` remain at `2.1.0`.
+
 ## [2.1.0] — 2026-06-25
 
 Dispatch-port + correctness release. The orchestration is now built entirely on documented Claude Code primitives — **not** breaking; these are internal dispatch and correctness fixes with no change to the public contract or generated-artifact behavior.

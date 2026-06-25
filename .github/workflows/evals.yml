@@ -1,0 +1,37 @@
+name: Evals (deterministic)
+
+# Free, per-PR correctness gate. Runs ONLY the deterministic eval tier —
+# pure-Python structural invariants over the repo (loader-resolution shape,
+# dead-tool regression, agent/skill cross-reference, manifest integrity,
+# frontmatter). No API key, no Claude CLI: the non-deterministic behavioral
+# tier (temp=1.0, real model routing) is intentionally local-only and never
+# runs here.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    name: Deterministic evals
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run deterministic evals
+        run: python3 evals/run_deterministic.py

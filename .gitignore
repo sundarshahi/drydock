@@ -1,1 +1,6 @@
 INTERNAL_ROADMAP.md
+
+# Python caches (eval harness is pure scripts; no build artifacts tracked)
+__pycache__/
+*.pyc
+.venv/
