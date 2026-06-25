@@ -93,7 +93,7 @@ Produce `drydock/frontend-engineer/docs/browser-support.md`.
 Verify the contracts established in Phase 2 (security) and Phase 4.6 (observability) actually hold on the final build:
 
 - **Observability names match the contract.** Web-vitals (LCP/INP/CLS) report to the OTLP/analytics endpoint; the API client emits `http_requests_total` / `http_request_duration_seconds` with labels `method`, `route` (templated), `status_class`; `traceparent` is injected on every request; the global error boundary + `window.onerror`/`unhandledrejection` reporter emit the structured JSON log fields (`trace_id`/`span_id` from the live span). Grep the code for any emitted name absent from `observability-contract.md` — drift is a bug.
-- **Security headers present.** Assert CSP is served with no `unsafe-inline`/`unsafe-eval`, HSTS/`nosniff`/frame-ancestors set, and no raw `dangerouslySetInnerHTML` (all HTML passes `lib/sanitize.ts`). The E2E suite can assert the response headers on a sample route.
+- **Security headers present.** Assert CSP is served with no `unsafe-inline`/`unsafe-eval`, HSTS/`nosniff`/frame-ancestors set, and no raw `dangerouslySetInnerHTML` (all HTML passes `lib/sanitize.ts`). Also assert: every external/CDN `<script>` carries an SRI `integrity` attribute (or is self-hosted); `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy: same-origin` are present; the Trusted Types CSP directive (`require-trusted-types-for 'script'`) is present where the framework supports it; the session cookie carries a `__Host-`/`__Secure-` prefix; and an authenticated/sensitive route responds with `Cache-Control: no-store`. The E2E suite can assert the response headers and cookie attributes on a sample route.
 - **No secrets in the client bundle.** Confirm only `NEXT_PUBLIC_*` config is exposed; no tokens/keys in the built JS.
 
 ## Output Files
@@ -119,6 +119,7 @@ Before concluding the frontend skill:
 - [ ] Cross-browser matrix tested (Chrome, Firefox, Safari, mobile)
 - [ ] Observability verified: web-vitals → OTLP/analytics, `traceparent` injected, global error boundary/reporter, contract names only (Step 7)
 - [ ] `security-defaults checklist passes`: CSP + security headers, no unsanitized `dangerouslySetInnerHTML`, no secrets in the bundle, secure cookies
+- [ ] Browser-hardening asserted on the final build: SRI `integrity` on external scripts (or self-hosted), COOP/CORP `same-origin` present, Trusted Types CSP directive present (where applicable), session cookie carries a `__Host-`/`__Secure-` prefix, and an authenticated/sensitive route returns `Cache-Control: no-store`
 
 **Present testing summary with coverage report, a11y audit results, and performance scores to user.**
 
@@ -127,4 +128,4 @@ Before concluding the frontend skill:
 Every component must have at least one accessibility test. "Tests pass" is not acceptable -- "94 component tests (87% branch coverage), 12 E2E flows, zero WCAG 2.1 AA violations, LCP 1.8s (budget 2.5s from performance-budget.yaml), CLS 0.04 (budget 0.1), bundle 156 KB gzip (budget 200 KB from performance-budget.yaml), web-vitals+traceparent emitting contract names, security-defaults checklist passes" is acceptable.
 
 - **Perf budget is a CI gate, not a doc** — `lighthouserc.json` + `.size-limit.json` thresholds derive from `docs/architecture/performance-budget.yaml`; the build fails on regression (DevOps wires the job). State the budget source, not a hardcoded number.
-- **`security-defaults checklist passes`** — CSP/security headers served, no unsanitized `dangerouslySetInnerHTML`, no secrets in the client bundle, secure cookies, input validated server-side (client validation is UX only).
+- **`security-defaults checklist passes`** — CSP/security headers served (incl. Trusted Types directive where supported, COOP/CORP `same-origin`, HSTS preload), SRI `integrity`+`crossorigin` on external scripts (or self-hosted), `__Host-`/`__Secure-` prefixed cookies, `Cache-Control: no-store` on sensitive routes, no unsanitized `dangerouslySetInnerHTML`, no secrets in the client bundle, secure cookies, input validated server-side (client validation is UX only).

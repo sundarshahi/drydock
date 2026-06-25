@@ -61,6 +61,44 @@ Logs are JSON, one object per line, written to **stdout only** (the platform shi
 
 ---
 
+## Security Event Logging — EMIT a distinct security-event stream
+
+**Security events are NOT request logs.** Emit a separate, structured **security-event stream** (still JSON, one object per line, stdout) so detection/alerting can query it without grepping the request firehose. Every security event is keyed by a stable **`event`** field (a `category` alias is allowed) — an auth failure is `event: "auth.failure"`, never an `info` line whose meaning hides in `message`. This is the contract behind `security-defaults.md` **"Security event logging"** (A09 / ASVS V16 / OPC C9) and software-engineer `03-cross-cutting` §3.4.
+
+**REQUIRED security events** (emit one structured record each — exact `event` values fixed here):
+
+| `event` | When | Typical `level` |
+|---------|------|-----------------|
+| `auth.success` | Authentication succeeds (login / token issued) | `info` |
+| `auth.failure` | Authentication fails (bad credential, expired/invalid token) | `warn` |
+| `auth.logout` | Session/token explicitly ended | `info` |
+| `auth.credential_change` | Password or MFA factor changed/reset/enrolled | `warn` |
+| `authz.denied` | Access-control denial — request rejected with `403` | `warn` |
+| `authz.role_change` | Privilege/role/permission grant or revocation | `warn` |
+| `input.rejected` | Boundary input-validation rejection (schema/type/allow-list) | `warn` |
+
+**REQUIRED fields per security event** — reuse the EXACT field names this contract already defines; do not coin new synonyms:
+
+| Field | Required | Meaning in a security event |
+|-------|----------|-----------------------------|
+| `timestamp` | yes | ISO 8601 UTC w/ ms — same format as the log schema above |
+| `level` | yes | per the table above (`info`/`warn`) |
+| `service` | yes | matches span `service.name` & metric job, identical string |
+| `event` | yes | stable key from the table above (`category` accepted as an alias) |
+| `user_id` | yes when known | authenticated principal from the session/token (the actor) — never a request-supplied id |
+| `tenant_id` | yes when known | tenant/org of the actor or target, from session/token |
+| `source_ip` | yes | client source IP (the source of the request) |
+| `action` | yes | the operation attempted (e.g. `login`, `password.reset`, `role.grant`) |
+| `target` | yes when applicable | resource/object the action was on (templated id, not raw PII) |
+| `result` | yes | outcome — `success` / `failure` / `denied` |
+| `trace_id` | yes when in a request | 32-hex from the **LIVE span context** — joins the event to its trace |
+
+- **HARD RULE — never log secrets, credentials, tokens, or full PII in a security event.** The redaction deny-list from "Structured Log JSON Schema" still applies in full: **log identifiers, not credentials** (`user_id`, not the password attempt; `target` resource id, not the raw token/card/auth header). A security event leaking a secret is a contract + security violation (see `security-defaults.md` redaction deny-list and `security-testing-protocol.md`).
+- **`source_ip` / `target` cardinality:** `source_ip` is a value, not a metric label — it lives in the event record only. `target` carries the templated/identifier form, never an unbounded PII string.
+- **These events feed the SIEM/alerting.** devops ships the security-event stream to the monitoring stack and sre defines detection rules (brute-force `auth.failure` bursts, anomalous `authz.denied`, unexpected `authz.role_change`) on the stable `event` key — the same emit→scrape→alert loop as the rest of this contract.
+
+---
+
 ## Required Span Attributes & Propagation — EMIT on every span
 
 Follow OpenTelemetry semantic conventions. Resource attributes are set once per process; span attributes per operation.
@@ -100,6 +138,7 @@ Follow OpenTelemetry semantic conventions. Resource attributes are set once per 
 | `http_requests_in_flight` | software-engineer | concurrency panel | saturation alert |
 | `*_pool_connections_*`, `*_pool_wait_seconds` | software-engineer | pool utilization panel | saturation / exhaustion alert |
 | Structured JSON logs (stdout) | software-engineer, frontend-engineer | devops ships stdout to log backend | sre correlates logs↔traces via `trace_id` |
+| Security-event stream (stdout, keyed by `event`) | software-engineer, frontend-engineer | devops ships the stream to SIEM / monitoring stack | sre writes detection/alert rules on the `event` key |
 | Spans + W3C propagation | software-engineer (start/continue), frontend-engineer (start at browser) | devops wires collector/backend + Grafana trace view | sre uses traces for RCA via exemplars |
 
 - **Authority (matches `conflict-resolution.md`):** software-engineer/frontend-engineer own the emitted names; **devops** owns dashboards + scrape config and implements thresholds; **sre** defines SLO thresholds + alert logic. None renames a signal unilaterally — a name change is a contract change agreed by all three.
@@ -112,6 +151,7 @@ Follow OpenTelemetry semantic conventions. Resource attributes are set once per 
 - [ ] `route`/`http.route` is templated everywhere — no raw IDs/emails/tokens in any label (cardinality bound).
 - [ ] Resource pools (db/redis/broker present) emit the USE instruments.
 - [ ] Logs are JSON to **stdout only**, every required field present; `trace_id`/`span_id` come from the **live span**; no PII/secrets.
+- [ ] A distinct **security-event stream** is emitted, keyed by a stable `event`, for all REQUIRED events (auth success/failure, logout, password/MFA change, `403` denial, role change, input rejection); each carries `user_id`/`tenant_id`/`source_ip`/`action`/`target`/`result`/`trace_id`; no secrets/credentials/full PII (per `security-defaults.md` "Security event logging").
 - [ ] Spans carry required semconv attributes; W3C `traceparent` + `baggage` propagate inbound→outbound; frontend starts the trace.
 - [ ] Histogram observations attach trace **exemplars**; `service.name`/`deployment.environment` strings match across metric, log, and span.
 - [ ] Export honors `OTEL_EXPORTER_OTLP_ENDPOINT` + resource attributes; metrics scrapeable by Prometheus.

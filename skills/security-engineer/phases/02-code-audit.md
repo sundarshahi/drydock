@@ -2,9 +2,9 @@
 
 ## Objective
 
-Systematically audit the entire codebase against the **OWASP Top 10 (2025 edition)**, plus the **OWASP API Security Top 10 (2023)** and — when LLM/ML usage is present — the **OWASP Top 10 for LLM Applications (2025)**. security-engineer is the SOLE AUTHORITY on OWASP code review -- no other skill performs OWASP analysis. Every finding must reference specific files, lines, and code patterns, and carry the per-finding standards tag block (see SKILL.md "Standards References"). Generate all outputs in `drydock/security-engineer/code-audit/`.
+Systematically audit the entire codebase against the **OWASP Top 10:2025 (Release Candidate 1, published 6 Nov 2025 — not yet ratified; 2021 remains the last finalized list)**, plus the **OWASP API Security Top 10 (2023)** and — when LLM/ML usage is present — the **OWASP Top 10 for LLM Applications (2025)**. Drydock deliberately audits against the 2025 RC1 categories (ahead of ratification) so reports are forward-compatible; the A01..A10:2025 mappings below are correct against RC1. security-engineer is the SOLE AUTHORITY on OWASP code review -- no other skill performs OWASP analysis. Every finding must reference specific files, lines, and code patterns, and carry the per-finding standards tag block (see SKILL.md "Standards References"). Generate all outputs in `drydock/security-engineer/code-audit/`.
 
-> **OWASP 2025 relabel:** the Web steps below were authored against the 2021 list; their ids are mapped to the 2025 edition inline. Key 2021→2025 changes: SSRF (old A10) is folded into **A01:2025** Broken Access Control; "Vulnerable & Outdated Components" (old A06) is expanded into **A03:2025** Software Supply Chain Failures; Security Misconfiguration moved up to **A02:2025**; and a NEW **A10:2025 Mishandling of Exceptional Conditions** (fail-open states, insecure error/exception handling) is added — see Step 10b. The per-vulnerability test guidance is unchanged; only category ids are remapped.
+> **OWASP 2025 relabel:** the Web steps below were authored against the 2021 list (the last finalized edition); their ids are mapped to **OWASP Top 10:2025 RC1** inline. RC1 was published 6 Nov 2025 and is **not yet ratified**, so the category set may still shift before the final release — Drydock intentionally audits against RC1 now. Key 2021→2025 changes: SSRF (old A10) is folded into **A01:2025** Broken Access Control; "Vulnerable & Outdated Components" (old A06) is expanded into **A03:2025** Software Supply Chain Failures; Security Misconfiguration moved up to **A02:2025**; and a NEW **A10:2025 Mishandling of Exceptional Conditions** (fail-open states, insecure error/exception handling) is added — see Step 10b. The per-vulnerability test guidance is unchanged; only category ids are remapped.
 
 ## Context Bridge
 
@@ -186,7 +186,7 @@ Write all outputs to `drydock/security-engineer/code-audit/`:
 
 | File | Contents |
 |------|----------|
-| `owasp-top10-report.md` | Full OWASP Top 10 (2025) analysis with findings per category |
+| `owasp-top10-report.md` | Full OWASP Top 10:2025 RC1 analysis with findings per category. Label the report "OWASP Top 10:2025 RC1" and note RC1 (6 Nov 2025) is not yet ratified (2021 is the last finalized list) |
 | `api-top10-report.md` | OWASP API Security Top 10 (2023) findings, per API service |
 | `llm-top10-report.md` | OWASP LLM Top 10 (2025) findings — only if LLM/ML usage detected |
 | `findings-by-service/<service>.md` | Per-service findings with severity summary |
@@ -195,7 +195,7 @@ Write all outputs to `drydock/security-engineer/code-audit/`:
 ## Validation
 
 Before proceeding to Phase 3, verify:
-- [ ] All 10 OWASP Web 2025 categories evaluated (A01–A10:2025), including A10:2025 Mishandling of Exceptional Conditions (Step 10b)
+- [ ] All 10 OWASP Top 10:2025 RC1 Web categories evaluated (A01–A10:2025), including A10:2025 Mishandling of Exceptional Conditions (Step 10b) — report labeled "OWASP Top 10:2025 RC1" with the not-yet-ratified note (2021 is the last finalized list)
 - [ ] OWASP API Security Top 10 (2023) evaluated for every API service (Step 13)
 - [ ] OWASP LLM Top 10 (2025) evaluated IF LLM/ML usage detected, else marked N/A (Step 14)
 - [ ] Every finding has a specific file:line location and the standards tag block (CVSS/CWE/OWASP/WSTG/ASVS)

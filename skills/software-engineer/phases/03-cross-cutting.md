@@ -135,9 +135,21 @@ deny-list (redact to "***" or hash): authorization, cookie, set-cookie, password
 - **Never log a full request/response body at `info`.** If a body must be logged for debugging, redact denied fields first and gate it behind `debug`.
 - Logging a secret is a contract AND a security violation (`security-defaults.md`, `observability-contract.md`).
 
-## 3.5 — Rate Limiting
+### Security event logging (HARD RULE)
 
-Implement at two levels:
+Emit a **distinct, structured security event** for every security-relevant action so they are alertable and auditable — not buried in request logs (cross-ref `security-defaults.md` "Security event logging" + `observability-contract.md`). Emit one for at least:
+
+- authentication **success** and **failure**, and **logout**
+- **403** access-control denials (per-OBJECT/BOLA + role denials)
+- **privilege / role change** (grant, revoke, role assignment)
+- **password / MFA change** (and credential reset/recovery)
+- **boundary validation rejections** (input rejected at the trust boundary)
+
+Each event carries the observability-contract field names — `user_id`, `tenant_id`, `ip`, `action`, `target`, `result`, `trace_id` — plus a **stable `event`/`category` field** so alerting rules can match on a constant, not a free-text message. **Never log secrets/PII** — the redaction deny-list above applies to security events too (log a user/object id, never the credential or the protected payload).
+
+## 3.5 — Rate limiting & resource-consumption limits
+
+Rate is only one axis. Cap **every** unbounded consumer of compute/memory/IO so a single caller can't exhaust the service (cross-ref `security-defaults.md` "Resource-consumption & anti-automation limits"). Implement request rate at two levels:
 
 1. **Global rate limiting** (per IP) — Sliding window, configurable RPM per endpoint
 2. **Tenant rate limiting** (per tenant) — Based on plan tier from tenant config
@@ -150,6 +162,16 @@ Request arrives
   → Set response headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   → Pass to next middleware
 ```
+
+**Beyond request rate, every service inherits these resource caps as middleware/config defaults:**
+- **Request body-size cap** — reject oversized payloads at the edge (e.g. `413`) before parsing.
+- **Mandatory pagination max** — list/collection queries enforce a hard max page size; **reject unbounded list queries** (no `limit` → apply a default, an over-max `limit` → clamp or `400`).
+- **JSON depth & array caps** — bound nesting depth and array/element counts on inbound JSON so a hostile body can't blow up the parser.
+- **File-upload caps** — per-file size, total request size, and max file count; enforce before buffering.
+- **GraphQL / nested-query limits** — query depth + complexity/cost limits (and pagination on connections) so a single nested query can't fan out unboundedly.
+- **Server-side timeouts everywhere** — a bounded timeout on the inbound request AND on **every** outbound HTTP / DB / cache / broker call (no unbounded waits; pairs with the per-call timeouts in 3.7).
+
+**Fail closed:** when the limiter's backend (Redis) is unavailable the limiter **denies** rather than fails open — a degraded counter store must not become an unlimited-traffic bypass. Every limit breach returns **`429` with a `Retry-After` header** (size/upload breaches use the appropriate `4xx`).
 
 ## 3.6 — Caching Layer
 
@@ -275,6 +297,9 @@ Secure-by-default code is written into the first draft, not bolted on after the 
 - **Strict CORS allowlist** — an explicit origin allowlist; **reject `*`** and `null`; NEVER combine `Access-Control-Allow-Origin: *` with `Allow-Credentials: true`.
 - **Secure cookies** — auth/session cookies are `HttpOnly` + `Secure` + `SameSite=Lax` (or `Strict`); no secrets/PII in `localStorage`; CSRF protection (token or SameSite) on state-changing requests.
 - **Per-OBJECT authorization (BOLA/IDOR)** — every single-object read/update/delete checks that the authenticated principal may access **that specific object** (ownership/tenant + object id), enforced at the data-access layer (`WHERE id=? AND owner_id=:session_user`). A tenant `WHERE org_id=` filter alone is NOT sufficient. Authorize from the session/token identity, never a request-supplied `user_id`/`tenant_id`. Default deny → 403/404 (prefer 404 where existence is sensitive). Apply to nested/related objects and bulk operations too.
+- **Cryptography** (cross-ref `security-defaults.md` "Strong cryptography: hashing, encryption, randomness") — hash credentials with a **memory-hard KDF** (Argon2id, scrypt, or bcrypt) with a per-credential salt — never a bare SHA/MD5. Use **authenticated encryption** (AES-GCM / ChaCha20-Poly1305) for data at rest — never ECB/unauthenticated modes. Generate all tokens, ids, and nonces from a **CSPRNG** (never `Math.random`/`rand()`). Enforce **TLS 1.2+ on every hop** (inbound and outbound, service-to-service included).
+- **Authentication & session lifecycle** (cross-ref `security-defaults.md` "Authentication & credential-handling defaults" + "Session & self-contained-token lifecycle") — credential endpoints (login, reset, token) **throttle + lock out** on repeated failure, expose an **MFA hook**, use **safe account recovery**, and give **no user-enumeration signal** (uniform response/timing for unknown vs known accounts). **Regenerate the session id on privilege change** (login / role elevation); enforce **idle + absolute session timeout**; support **server-side logout / token revocation**. For JWT/self-contained tokens: pin an **algorithm allowlist that rejects `alg=none`** (and alg-confusion) and validate `exp` / `iss` / `aud` on every request.
+- **Property-level authorization / mass assignment** (cross-ref `security-defaults.md` "Property-level authorization (mass assignment / BOPLA)") — bind only an **allowlist of client-settable fields**; never spread `req.body` into a model/entity. Set `role` / `tenant` / `owner` and other privileged fields **server-side** from the session, never from the payload. Return **DTO-shaped responses** (an explicit allowlist of fields), never raw rows/entities.
 
 See `security-defaults.md` for the full checklist; the BUILD phase asserts `security-defaults checklist passes` before it closes.
 
@@ -285,8 +310,8 @@ Before moving to Phase 4:
 - Auth middleware correctly validates JWTs and extracts claims
 - Tenant resolution correctly scopes all downstream operations
 - Error handler maps all app errors to RFC 9457 problem+json via the error-catalog module
-- Logging produces valid JSON to stdout with all mandatory fields; redaction deny-list active
-- Rate limiting enforces limits and returns correct headers
+- Logging produces valid JSON to stdout with all mandatory fields; redaction deny-list active; distinct security events emitted for authn success/failure, logout, 403 denials, privilege/role change, password/MFA change, and validation rejections
+- Rate limiting enforces request-rate limits and returns correct headers; resource caps active (body-size cap, mandatory pagination max — unbounded list rejected, JSON depth/array caps, upload size/count caps, GraphQL depth/complexity limits, inbound + outbound/DB timeouts); limiter **fails closed** (denies when Redis is down) and returns `429` + `Retry-After`
 - Cache layer handles HIT, MISS, and invalidation correctly
 - Circuit breaker opens after failures and recovers after cooldown
 - Feature flag client returns correct values AND each flag falls back to its safe default when the provider is down
@@ -301,7 +326,12 @@ Before moving to Phase 4:
 - Errors are RFC 9457 problem+json (`application/problem+json`) `$ref`'ing the shared `Problem` schema; runtime + docs both read the generated error-catalog module
 - Logs to stdout/stderr ONLY (no file transports/rotation/`LOG_FILE`); processes stateless (no in-process/local-disk session/upload/temp state, no sticky sessions)
 - PII redaction deny-list wired into the logger; no full request body logged at `info`
+- Security events emitted (distinct, structured, alertable) for authn success/failure, logout, 403 denials, privilege/role change, password/MFA change, and boundary validation rejections — with `user_id`/`tenant_id`/`ip`/`action`/`target`/`result`/`trace_id` + a stable `event`/`category`; no secrets/PII
+- Resource-consumption limits active: request body-size cap, mandatory pagination max (unbounded list rejected), JSON depth/array caps, file-upload size/count caps, GraphQL depth/complexity limits, inbound + outbound/DB timeouts; limiter fails closed (denies when Redis down) and returns `429` + `Retry-After`
 - Observability init is the FIRST entrypoint import; RED + USE instruments emitted with EXACT contract names/labels/buckets; duration histogram carries trace exemplars; `/metrics` exposed
 - Feature-flag client built on OpenFeature with an always-present env/config fallback + per-flag fail-static safe default (provider-down test green); `config/feature-flags.yaml` registry committed
 - Security middleware present: security headers, strict CORS allowlist (no `*`), HttpOnly+Secure+SameSite cookies, per-OBJECT default-deny authz (BOLA/IDOR)
+- Cryptography defaults: credentials hashed with Argon2id/scrypt/bcrypt + salt; authenticated encryption (AES-GCM/ChaCha20-Poly1305) at rest; CSPRNG for all tokens/ids; TLS 1.2+ every hop
+- Authentication & session lifecycle: credential endpoints throttle+lock out, MFA hook, safe recovery, no user enumeration; session id regenerated on privilege change; idle+absolute timeout; server-side logout/revoke; JWT alg-allowlist rejecting `alg=none` + `exp`/`iss`/`aud` validated
+- Property-level authz (mass assignment): allowlisted client-settable fields only (no `req.body` spread); role/tenant/owner set server-side; DTO-shaped responses
 - **security-defaults checklist passes**

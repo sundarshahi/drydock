@@ -10,7 +10,7 @@
       "name": "drydock",
       "source": ".",
       "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 15 specialized agents cover architecture, API-first contracts, tested backend/frontend, observability, security-by-default, CI/CD hardening, automated testing, performance budgets, feature flags, and regulatory compliance — from idea to ship.",
-      "version": "2.2.1",
+      "version": "2.3.0",
       "author": {
         "name": "sundarshahi"
       }

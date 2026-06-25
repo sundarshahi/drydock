@@ -61,13 +61,20 @@ jobs:
         env: { COSIGN_EXPERIMENTAL: "1" }
         run: cosign sign --yes "<IMAGE>@${{ steps.build.outputs.digest }}"
 
-      # ── syft SBOM (SPDX) → attach to the GitHub Release; reconcile with security-engineer. ──
+      # ── syft SBOM (SPDX) → SIGN/ATTEST keyed to the digest, attach to Release, reconcile. ──
       - name: Generate SBOM (syft)
         uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75 # v0.17.9
         with:
           image: "<IMAGE>@${{ steps.build.outputs.digest }}"
           format: spdx-json
           output-file: sbom.spdx.json
+      # in-toto SBOM attestation bound to the image DIGEST (keyless OIDC) — not just a release file.
+      - name: cosign attest SBOM (in-toto SPDX predicate, keyed to digest)
+        env: { COSIGN_EXPERIMENTAL: "1" }
+        run: |
+          set -euo pipefail
+          cosign attest --yes --type spdxjson --predicate sbom.spdx.json \
+            "<IMAGE>@${{ steps.build.outputs.digest }}"
       - name: Reconcile SBOM with security-engineer audit
         run: |
           set -euo pipefail
@@ -99,6 +106,13 @@ jobs:
         run: |
           set -euo pipefail
           cosign verify "${{ needs.build-push.outputs.image }}@${{ needs.build-push.outputs.digest }}" \
+            --certificate-identity-regexp "^https://github.com/<ORG>/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+      - name: cosign verify-attestation (signed SBOM, by digest — BLOCKS on missing/failed)
+        run: |
+          set -euo pipefail
+          cosign verify-attestation --type spdxjson \
+            "${{ needs.build-push.outputs.image }}@${{ needs.build-push.outputs.digest }}" \
             --certificate-identity-regexp "^https://github.com/<ORG>/" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 

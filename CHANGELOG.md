@@ -2,6 +2,26 @@
 
 All notable changes to **Drydock**.
 
+## [2.3.0] — 2026-06-25
+
+Production-grade security hardening. The audit (HARDEN) phase already covered OWASP Top 10 / API / LLM thoroughly; this release closes the **BUILD↔AUDIT asymmetry** — control families the security audit checks for are now written into the secure-by-default BUILD contract so builder agents ship them in the first draft instead of relying on HARDEN to retrofit. Grounded in an evidence-based gap analysis cross-referenced against the current standards (OWASP ASVS 5.0, API Security Top 10 2023, LLM Top 10 2025, OWASP Top 10 CI/CD Security Risks, SLSA v1.2).
+
+### Added
+- **Seven new secure-by-default sections in `security-defaults.md`** (each ASVS 5.0 / Proactive-Controls tagged and asserted in the BUILD Quality Bar line): **Strong cryptography** (Argon2id/scrypt/bcrypt credential hashing, AES-GCM/ChaCha20-Poly1305 authenticated encryption, CSPRNG for all tokens/ids, TLS 1.2+); **Authentication & credential-handling** (throttle + lockout, MFA hook, breach-screened password policy, safe recovery, no user enumeration); **Session & self-contained-token lifecycle** (CSPRNG session ids, regeneration on privilege change, idle+absolute timeout, server-side revoke, JWT alg-allowlist rejecting `alg=none` + `exp`/`iss`/`aud`); **Resource-consumption & anti-automation limits** (body/page/depth/upload caps, timeouts, per-tenant quotas, anti-automation on sensitive flows — API4/API6); **Property-level authorization / mass assignment** (bind allowlisted fields, server-side `role`/`tenant`/`owner`, DTO-shaped responses — API3/BOPLA); **Treat third-party/upstream responses as untrusted** (schema-validate, size/timeout caps, verify webhooks — API10); **Security event logging** (A09 / ASVS V16).
+- **Backend BUILD phases wired to assert the new defaults** — `software-engineer` 03-cross-cutting (extended rate-limiting into full resource-consumption limits + a security-event-logging HARD RULE + crypto/auth/session/property-authz in §3.11), 02-service-implementation (per-handler property-level authz + resource limits), 04-integration (new "treat upstream as untrusted" section). Each adds the control to its local Validation Loop / Quality Bar.
+- **Frontend browser hardening** (`frontend-engineer` 02-design-system + SKILL + 06-testing-a11y): Subresource Integrity on external scripts, `__Host-`/`__Secure-` cookie prefixes, Cross-Origin-Opener/Resource-Policy + COEP, Trusted Types (`require-trusted-types-for 'script'`), HSTS `preload`, and `Cache-Control: no-store` on sensitive responses — all asserted in the E2E security-header test.
+- **Security-event logging contract** in `observability-contract.md` — a distinct stdout security-event stream keyed by a stable `event` field (`auth.success/failure`, `auth.logout`, `auth.credential_change`, `authz.denied`, `authz.role_change`, `input.rejected`) with fixed field names, a no-secrets/PII rule, and a SIEM/alerting hand-off to devops/sre.
+- **CI/CD & supply-chain hardening** (`devops` 06-security, 03-cicd-pipelines, templates): dependency-confusion controls (CICD-SEC-3), Poisoned-Pipeline-Execution guardrails (CICD-SEC-4), CI/CD identity & access (CICD-SEC-2), runner isolation (CICD-SEC-5), CI/CD audit→SIEM (CICD-SEC-10), and SLSA v1.2 source-track integrity (signed commits, no force-push). The `ci.yml` template gains a tfsec/checkov IaC gate (fail on HIGH) wired into the build chain; `cd-production.yml` now **signs the SBOM** (`cosign attest`, in-toto SPDX keyed to the digest) and **verifies the attestation as a blocking gate**.
+- **AI/LLM build-side controls** (`data-scientist` phases): model/dataset provenance + signature verification as a hard promotion gate and unsafe-deserialization scanning (LLM03), vector-store per-tenant isolation + per-retrieval authz + embedding-poisoning guards (LLM08), data-poisoning defenses (LLM04), RAG grounding / misinformation labeling (LLM09), and runtime token/cost/consumption limits (LLM10).
+- **Audit trail for the secret-guard hook** — every BLOCK and every `DRYDOCK_ALLOW_SECRET=1` bypass is appended as one JSON line to `drydock/.orchestrator/audit/secret-guard.jsonl` in a Drydock project (best-effort; never fails the hook).
+
+### Changed
+- **`session-guard.sh` anchors detection to `$CLAUDE_PROJECT_DIR`** instead of the process cwd; **`hooks.json`** now verifies each hook script is a regular file before invoking it. The secret-guard header documents its intentional **fail-open trust model** (a broken guard never wedges a session; the plugin dir is trusted installed code).
+
+### Fixed
+- **Open-redirect guidance in `frontend-engineer/SKILL.md`** — the auth-callback anti-pattern now requires validating `callbackUrl` as a same-origin / allowlisted relative path before redirecting (rejecting absolute/cross-origin URLs); honoring an unvalidated `callbackUrl` is called out as an open redirect.
+- **OWASP Top 10 2025 labeled as Release Candidate 1** (published 6 Nov 2025, not yet ratified; 2021 remains the last finalized edition) across `security-engineer` code-audit + SKILL. The A01–A10:2025 category mappings are unchanged (correct against RC1); reports are labeled "OWASP Top 10:2025 RC1".
+
 ## [2.2.1] — 2026-06-25
 
 Patch fix for a skill-load failure on permission-checked setups (e.g. the VS Code extension and managed installs).

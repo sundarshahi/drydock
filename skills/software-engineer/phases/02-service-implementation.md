@@ -66,6 +66,8 @@ Required for every handler:
 - Request ID propagation (from `X-Request-ID` header or generate UUID)
 - Structured logging with `trace_id`, `tenant_id`, `user_id`, `method`, `path`, `status`, `duration_ms`
 - Error responses as **RFC 9457 problem+json** (`Content-Type: application/problem+json`): body `{ type, title, status, detail, instance }` plus the standard extensions `trace_id` (string) and `errors[]` (array of `{ field|pointer, detail }`). The body `$ref`s the reusable OpenAPI `Problem` component (owned by solution-architect); the handler NEVER hand-rolls a `{code,message,details}` shape. Mapping app error → Problem flows through the generated error-catalog module (see 3.3).
+- **Property-level authorization (mass assignment / BOPLA)** — bind an **allowlist of client-settable fields** from the request; **never spread `req.body` into a model/entity**. Set `role` / `tenant` / `owner` and any other privileged field **server-side** from the session/token, never from the payload. Respond with **DTO-shaped responses** (an explicit field allowlist), never raw rows/entities. (cross-ref `security-defaults.md` "Property-level authorization (mass assignment / BOPLA)")
+- **Resource-consumption limits** — list endpoints enforce a **mandatory pagination max** (reject/clamp unbounded list queries), and the handler inherits the **request body-size cap** and **inbound + outbound/DB timeouts**. (cross-ref `security-defaults.md` "Resource-consumption & anti-automation limits" and 3.5)
 - Pagination support using cursor-based pagination for list endpoints
 
 ## 2.3 — Service Layer Implementation Pattern
@@ -331,6 +333,8 @@ Before moving to Phase 3:
 | Health check works | `GET /healthz` returns 200, `GET /readyz` returns 200 when DB connected |
 | API contract match | All OpenAPI endpoints implemented, request/response schemas match |
 | Tenant isolation | Every query includes `tenant_id` filter — manual review |
+| Property-level authz | Handlers bind an allowlist of client-settable fields (no `req.body` spread into a model); `role`/`tenant`/`owner` set server-side from the session; responses are DTO-shaped, not raw rows (no mass assignment / BOPLA) |
+| Resource-consumption limits | List endpoints enforce a mandatory pagination max (no unbounded list query); request body-size cap + inbound and outbound/DB timeouts in effect (see 3.5) |
 | No hardcoded secrets | No API keys, passwords, or tokens in source code |
 | Config validation | Service fails fast on startup if required env vars missing |
 | Graceful shutdown | SIGTERM triggers connection draining, in-flight request completion |

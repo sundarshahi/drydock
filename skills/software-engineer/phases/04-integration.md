@@ -93,7 +93,18 @@ Every external client must:
 - Log all outbound calls with duration and status
 - Support mock/stub for testing
 
-## 4.3 — Database Migration Runner
+## 4.3 — Treat third-party / upstream responses as UNTRUSTED
+
+A response from Stripe, SendGrid, an OAuth provider, or any upstream API is **attacker-influenced input**, not trusted data — handle it with the same rigor as a client request (cross-ref `security-defaults.md` "Treat third-party / upstream API responses as untrusted"). Every external client (4.2) MUST:
+
+- **Schema-validate the response** before use — parse into a typed model with explicit types/sizes/enum constraints; **reject** anything off-contract rather than reading fields off a raw blob.
+- **Encode before any sink** — never pass an upstream string straight into HTML, SQL, a shell, a log line, or a downstream request; context-encode/parameterize at the sink (per `security-defaults.md` "Context-aware output encoding" + "Parameterized queries").
+- **Bound the call** — set a **timeout**, a **response size cap**, and a **retry + circuit breaker** on every outbound call (reuse 3.7); a hostile/slow upstream must not hang or exhaust the caller.
+- **Route redirects through the SSRF allowlist** — do NOT blindly follow upstream `Location`/callback/redirect URLs; re-validate each hop against the SSRF allowlist (`security-defaults.md` "SSRF allowlist").
+- **Verify webhooks before acting** — check the signature **and** enforce replay/nonce/timestamp protection on inbound webhooks before any side effect (idempotency by event id is necessary but not sufficient).
+- **Never `eval`/deserialize into executable objects** — no `eval`, no native/pickle/Java deserialization, no dynamic-type instantiation from an upstream payload; deserialize only into inert data + the validated schema above.
+
+## 4.4 — Database Migration Runner
 
 Implement a migration runner that executes the SQL migrations from `schemas/migrations/`:
 
@@ -115,6 +126,7 @@ Before moving to Phase 5:
 - Service-to-service clients compile and type-check against OpenAPI specs
 - Event producers and consumers handle the full lifecycle (publish, consume, idempotency, dead-letter)
 - External API clients wrap SDKs with circuit breaker and retry
+- External/upstream responses are schema-validated and treated as untrusted: timeout + size cap + circuit breaker on outbound, redirects re-checked against the SSRF allowlist, webhook signature + replay/nonce verified before any side effect, no `eval`/deserialization of upstream payloads
 - Migration runner can run up/down/status
 - All integration tests pass
 
@@ -123,7 +135,8 @@ Before moving to Phase 5:
 ## Quality Bar
 
 - All service clients are auto-generated from specs, not hand-written
-- Every outbound call has circuit breaker, retry, timeout, and logging
+- Every outbound call has circuit breaker, retry, timeout, **response size cap**, and logging
+- Upstream/third-party responses treated as UNTRUSTED: schema-validated (typed, size/enum-constrained) and encoded before any sink; redirects routed through the SSRF allowlist; webhooks verify signature + replay/nonce before acting; no `eval`/deserialization of upstream payloads into executable objects (cross-ref `security-defaults.md` "Treat third-party / upstream API responses as untrusted")
 - Event consumers are idempotent (duplicate events produce same result)
 - Migration runner is transaction-safe and uses locking
 - Mock/stub available for every external dependency
