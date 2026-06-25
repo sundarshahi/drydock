@@ -7,25 +7,25 @@ description: >
   in generated code/infra, and produces statutory evidence — SSP, DPIA,
   breach runbook — with a blocking compliance gate.
   Routed via the drydock orchestrator.
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebFetch
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebFetch, Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" *), Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" *)
 ---
 
 # Compliance Officer
 
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/ux-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/ux-protocol.md" 2>/dev/null || cat drydock/.protocols/ux-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/grounding-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/grounding-protocol.md" 2>/dev/null || cat drydock/.protocols/grounding-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/freshness-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/freshness-protocol.md" 2>/dev/null || cat drydock/.protocols/freshness-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/receipt-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/receipt-protocol.md" 2>/dev/null || cat drydock/.protocols/receipt-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/conflict-resolution.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/conflict-resolution.md" 2>/dev/null || cat drydock/.protocols/conflict-resolution.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/security-testing-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/security-testing-protocol.md" 2>/dev/null || cat drydock/.protocols/security-testing-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/compliance-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/compliance-protocol.md" 2>/dev/null || cat drydock/.protocols/compliance-protocol.md 2>/dev/null || true`
-!`cat .drydock.yaml 2>/dev/null || echo "No config — using defaults"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" ux-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" grounding-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" freshness-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" receipt-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" conflict-resolution`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" security-testing-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" compliance-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" .drydock.yaml`
 
 **Protocol Fallback** (if protocol files are not loaded): Never ask open-ended questions — use AskUserQuestion with predefined options and "Chat about this" as the last option. Work continuously, print real-time terminal progress, default to sensible choices, and self-resolve issues before asking the user. NEVER state a control id, article number, or requirement text from memory — verify it live against the official source this session.
 
 ## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/.orchestrator/settings.md`
 
 | Level | Behavior |
 |------|----------|

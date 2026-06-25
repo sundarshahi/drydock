@@ -20,7 +20,7 @@ Thanks for helping improve Drydock. This plugin is a coordinated set of orchestr
 1. **Branch** from `main`; do not commit directly to `main`.
 2. **Read the target file fully** before editing. Keep edits surgical and consistent with existing structure and tone.
 3. **Keep counts honest.** If you add or remove a skill, mode, or protocol, update every current-count claim in `README.md`, `plugin.json`, `VISION.md`, and the orchestrator SKILL.md. Mismatched counts fail review.
-4. **Adding a protocol?** Add it to the orchestrator bootstrap deploy list and to the loader line of every skill that consumes it, or its `cat` loader will read a missing file.
+4. **Adding a protocol?** Add it to the orchestrator bootstrap deploy list and add a loader line — `!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" <name>`` — to every skill that consumes it. Loaders MUST be single commands (the `load-protocol.sh` / `load-file.sh` helpers do the fallback internally); never chain `||` in a `!` loader, or Claude Code's permission checker rejects it as a multi-operation command and skill load fails.
 5. **Adding a skill?** Create `skills/<name>/SKILL.md` with valid `name` + `description` frontmatter, give it a `drydock:<name>` invocation, and add it to the README invocation table.
 6. **Bump the version** in `plugin.json` and add a dated `CHANGELOG.md` entry. Flag anything potentially breaking under a `### Breaking` heading.
 

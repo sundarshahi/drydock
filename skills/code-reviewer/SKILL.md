@@ -5,34 +5,34 @@ description: >
   conformance, anti-patterns, performance issues, maintainability.
   Read-only analysis, never modifies code.
   Routed via the drydock orchestrator.
-allowed-tools: Bash, Read, Write, Grep, Glob, Task, Skill
+allowed-tools: Bash, Read, Write, Grep, Glob, Task, Skill, Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" *), Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" *)
 ---
 
 # Code Reviewer Skill
 
 ## Protocols
 
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/ux-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/ux-protocol.md" 2>/dev/null || cat drydock/.protocols/ux-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/input-validation.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/input-validation.md" 2>/dev/null || cat drydock/.protocols/input-validation.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/tool-efficiency.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/tool-efficiency.md" 2>/dev/null || cat drydock/.protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/visual-identity.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/visual-identity.md" 2>/dev/null || cat drydock/.protocols/visual-identity.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/freshness-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/freshness-protocol.md" 2>/dev/null || cat drydock/.protocols/freshness-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/receipt-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/receipt-protocol.md" 2>/dev/null || cat drydock/.protocols/receipt-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/boundary-safety.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/boundary-safety.md" 2>/dev/null || cat drydock/.protocols/boundary-safety.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/conflict-resolution.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/conflict-resolution.md" 2>/dev/null || cat drydock/.protocols/conflict-resolution.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/grounding-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/grounding-protocol.md" 2>/dev/null || cat drydock/.protocols/grounding-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat drydock/.protocols/architecture-boundaries.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/observability-contract.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/observability-contract.md" 2>/dev/null || cat drydock/.protocols/observability-contract.md 2>/dev/null || true`
-!`cat docs/architecture/performance-budget.yaml 2>/dev/null || true`
-!`cat config/feature-flags.yaml 2>/dev/null || true`
-!`cat api/openapi/components.yaml 2>/dev/null || true`
-!`cat .drydock.yaml 2>/dev/null || echo "No config — using defaults"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" ux-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" input-validation`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" tool-efficiency`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" visual-identity`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" freshness-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" receipt-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" boundary-safety`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" conflict-resolution`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" grounding-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" architecture-boundaries`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" observability-contract`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" docs/architecture/performance-budget.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" config/feature-flags.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" api/openapi/components.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" .drydock.yaml`
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use Grep to find the relevant lines, then Read with offset/limit.
 
 ## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/.orchestrator/settings.md`
 
 | Level | Behavior |
 |------|----------|

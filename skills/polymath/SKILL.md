@@ -4,22 +4,27 @@ description: >
   [drydock internal] Thinking partner when you're unsure what to
   build or how — explores ideas, researches options, helps decide before
   committing to code. Routed via the drydock orchestrator.
+allowed-tools: >-
+  Task, Skill, Bash, Read, Write, Edit, MultiEdit, NotebookEdit, Grep, Glob,
+  AskUserQuestion, TodoWrite, WebSearch, WebFetch,
+  Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" *),
+  Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" *)
 ---
 
 # Polymath
 
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/ux-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/ux-protocol.md" 2>/dev/null || cat drydock/.protocols/ux-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/input-validation.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/input-validation.md" 2>/dev/null || cat drydock/.protocols/input-validation.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/tool-efficiency.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/tool-efficiency.md" 2>/dev/null || cat drydock/.protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/visual-identity.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/visual-identity.md" 2>/dev/null || cat drydock/.protocols/visual-identity.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/freshness-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/freshness-protocol.md" 2>/dev/null || cat drydock/.protocols/freshness-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/receipt-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/receipt-protocol.md" 2>/dev/null || cat drydock/.protocols/receipt-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/boundary-safety.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/boundary-safety.md" 2>/dev/null || cat drydock/.protocols/boundary-safety.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/conflict-resolution.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/conflict-resolution.md" 2>/dev/null || cat drydock/.protocols/conflict-resolution.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/grounding-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/grounding-protocol.md" 2>/dev/null || cat drydock/.protocols/grounding-protocol.md 2>/dev/null || true`
-!`cat .drydock.yaml 2>/dev/null || echo "No config"`
-!`cat drydock/polymath/context/decisions.md 2>/dev/null || echo "No prior polymath context"`
-!`cat drydock/polymath/context/repo-map.md 2>/dev/null || echo "No repo map"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" ux-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" input-validation`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" tool-efficiency`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" visual-identity`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" freshness-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" receipt-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" boundary-safety`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" conflict-resolution`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" grounding-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" .drydock.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/polymath/context/decisions.md`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/polymath/context/repo-map.md`
 
 ## Identity
 

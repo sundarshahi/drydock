@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
-"""Guards the first-run protocol-loader bug.
+"""Guards the protocol-loader mechanism (wrapper-script form).
 
-Every worker SKILL.md pulls shared protocols at load time with a
-"belt-and-suspenders" shell line of the shape:
+Every worker SKILL.md pulls shared protocols at load time. Loaders are SINGLE
+commands that invoke a bundled helper script, e.g.:
 
-    !`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/P.md" 2>/dev/null \
-      || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/P.md" 2>/dev/null \
-      || cat drydock/.protocols/P.md 2>/dev/null || true`
+    !`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" grounding-protocol`
 
-If a protocol file is missing, typo'd, or renamed, the loader silently
-resolves to EMPTY (the `|| true` tail) and the worker boots with no
-governance text -- a dangerous, invisible regression. WHY it matters:
-the protocols are the only thing constraining a subagent's behavior, so
-a dangling reference is a security/quality hole that no runtime error
-would surface.
+The helper does the three-path fallback (PLUGIN_ROOT -> script-relative ->
+drydock/.protocols) INTERNALLY. This shape exists because the previous inline
+form chained `cat ... || cat ... || cat ... || true`, and Claude Code's
+permission checker rejects any `!` loader containing a compound operator
+(`||`/`&&`/`;`/`|`) as "multiple operations", hard-failing skill load. So this
+test asserts BOTH that protocols still resolve AND that no loader ever
+reintroduces a compound operator.
 
-This test asserts three independent things:
-  (a) all 14 canonical protocol files exist (source of truth),
-  (b) every protocol referenced by a loader line resolves to a real
-      file (no dangling refs across all skills/*/SKILL.md), and
-  (c) the loader snippet itself resolves correctly under each of the
-      four real fallback scenarios (PLUGIN_ROOT hit, SKILL_DIR hit,
-      drydock/.protocols hit, and graceful-empty cold start).
+Config/dir loaders use a sibling helper:
+
+    !`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/.orchestrator/settings.md`
+
+Assertions:
+  (a) all 14 canonical protocol files exist (source of truth), and the
+      canonical list does not drift from the directory;
+  (b) every protocol named by a load-protocol.sh loader resolves to a real
+      file (no dangling refs -> would silently load EMPTY);
+  (b2) no `!` loader line in any skill .md contains a compound shell operator
+      (the exact permission-checker regression this whole change fixes);
+  (c) load-protocol.sh resolves correctly under each real scenario
+      (PLUGIN_ROOT hit, script-relative hit, drydock/.protocols hit,
+      cold-start empty) and refuses path traversal; and
+  (d) load-file.sh cats a file, lists a directory, degrades to empty for a
+      missing path, and refuses absolute / parent-traversal paths.
 """
 
 from __future__ import annotations
@@ -35,7 +43,10 @@ from pathlib import Path
 
 # evals/deterministic/<this file> -> parents[2] == repo root
 ROOT = Path(__file__).resolve().parents[2]
-PROTOCOLS_DIR = ROOT / "skills" / "_shared" / "protocols"
+SHARED = ROOT / "skills" / "_shared"
+PROTOCOLS_DIR = SHARED / "protocols"
+LOAD_PROTOCOL = SHARED / "load-protocol.sh"
+LOAD_FILE = SHARED / "load-file.sh"
 
 # Canonical source-of-truth list (verified against the live repo).
 EXPECTED_PROTOCOLS = [
@@ -55,60 +66,44 @@ EXPECTED_PROTOCOLS = [
     "visual-identity.md",
 ]
 
-# Sample protocol used for the live fallback-resolution scenarios.
-SAMPLE = "grounding-protocol.md"
+SAMPLE = "grounding-protocol"  # stem (no .md) used for live resolution scenarios
 
-# Matches the protocol basename inside any loader reference.
-REF_RE = re.compile(r"_shared/protocols/([A-Za-z0-9._-]+\.md)")
-
-# Every executable loader line MUST keep all three fallback paths. Dropping
-# the ${CLAUDE_PLUGIN_ROOT} primary (or the ${CLAUDE_SKILL_DIR}/../ secondary)
-# is exactly the first-run-empty regression this whole test exists to prevent.
-REQUIRED_FALLBACKS = (
-    "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/",
-    "${CLAUDE_SKILL_DIR}/../_shared/protocols/",
-    "drydock/.protocols/",
-)
+# Names a load-protocol.sh loader passes as its single argument.
+PROTOCOL_REF_RE = re.compile(r'load-protocol\.sh"\s+([A-Za-z0-9._-]+)`')
+# Any `!` inline-bash loader line (skill preprocessing directive).
+LOADER_LINE_RE = re.compile(r"^\s*!`")
+# Compound shell operators the permission checker decomposes on.
+COMPOUND_RE = re.compile(r"\|\||&&|;|(?<![0-9])\|(?!\|)")
 
 
-def _loader_snippet(stem: str) -> str:
-    """Reconstruct the exact loader shell line for protocol `stem.md`."""
-    return (
-        f'cat "${{CLAUDE_PLUGIN_ROOT}}/skills/_shared/protocols/{stem}" 2>/dev/null '
-        f'|| cat "${{CLAUDE_SKILL_DIR}}/../_shared/protocols/{stem}" 2>/dev/null '
-        f"|| cat drydock/.protocols/{stem} 2>/dev/null || true"
-    )
-
-
-def _run_loader(stem: str, env_overrides: dict, cwd: str) -> str:
-    """Execute the loader snippet under /bin/sh; return raw stdout."""
-    # Start from a clean env, then apply overrides. Keys mapped to None
-    # are removed so a scenario can guarantee a var is unset.
+def _run(script: Path, arg: str, env_overrides: dict, cwd: str) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items()}
     for key, val in env_overrides.items():
         if val is None:
             env.pop(key, None)
         else:
             env[key] = val
-    proc = subprocess.run(
-        ["/bin/sh", "-c", _loader_snippet(stem)],
+    return subprocess.run(
+        ["bash", str(script), arg],
         env=env,
         cwd=cwd,
         capture_output=True,
         text=True,
     )
-    return proc.stdout
 
 
 def run() -> list[str]:
     failures: list[str] = []
 
-    # (a) Source of truth: all 14 canonical files must exist.
+    # --- helper scripts must exist and be executable -----------------------
+    for s in (LOAD_PROTOCOL, LOAD_FILE):
+        if not s.is_file():
+            failures.append(f"(0) missing helper script: {s.relative_to(ROOT)}")
+
+    # (a) Source of truth: all 14 canonical files exist; dir must not drift.
     for name in EXPECTED_PROTOCOLS:
         if not (PROTOCOLS_DIR / name).is_file():
             failures.append(f"(a) missing canonical protocol file: skills/_shared/protocols/{name}")
-
-    # Guard against the canonical list silently drifting from the dir.
     if PROTOCOLS_DIR.is_dir():
         on_disk = {p.name for p in PROTOCOLS_DIR.iterdir() if p.suffix == ".md"}
         extra = sorted(on_disk - set(EXPECTED_PROTOCOLS))
@@ -120,110 +115,100 @@ def run() -> list[str]:
     else:
         failures.append(f"(a) protocols dir does not exist: {PROTOCOLS_DIR}")
 
-    # (b) No dangling refs: every protocol referenced by any loader line
-    #     in any skills/*/SKILL.md must resolve to a real file.
-    skill_mds = sorted((ROOT / "skills").glob("*/SKILL.md"))
+    # (b) No dangling refs + (b2) no compound operators in ANY loader line.
+    skill_mds = sorted((ROOT / "skills").rglob("*.md"))
     if not skill_mds:
-        failures.append("(b) found no skills/*/SKILL.md files to scan")
+        failures.append("(b) found no skills/**/*.md files to scan")
+    saw_loader = False
     for md in skill_mds:
-        text = md.read_text(encoding="utf-8")
-        for line in text.splitlines():
-            if "_shared/protocols/" not in line:
+        rel = md.relative_to(ROOT)
+        for lineno, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
+            if not LOADER_LINE_RE.match(line):
                 continue
-            for basename in REF_RE.findall(line):
-                if not (PROTOCOLS_DIR / basename).is_file():
-                    rel = md.relative_to(ROOT)
+            saw_loader = True
+            # (b2) the regression guard: loaders must be single commands.
+            if COMPOUND_RE.search(line):
+                failures.append(
+                    f"(b2) compound operator in loader {rel}:{lineno} -- the "
+                    f"permission checker rejects this as multiple operations: {line.strip()}"
+                )
+            # (b) every load-protocol.sh ref must resolve to a real file.
+            for name in PROTOCOL_REF_RE.findall(line):
+                stem = name[:-3] if name.endswith(".md") else name
+                if not (PROTOCOLS_DIR / f"{stem}.md").is_file():
                     failures.append(
-                        f"(b) dangling protocol ref in {rel}: '{basename}' "
-                        "has no file in skills/_shared/protocols/ "
-                        "(would silently load EMPTY)"
+                        f"(b) dangling protocol ref in {rel}:{lineno}: '{name}' "
+                        "has no file in skills/_shared/protocols/ (loads EMPTY)"
                     )
-            # (b2) Shape conformance: an EXECUTABLE loader directive (a line
-            #      that starts with the skill `!`cat ...`` command form and
-            #      references a shared protocol) must retain ALL THREE fallback
-            #      paths. A SKILL.md that dropped the ${CLAUDE_PLUGIN_ROOT}
-            #      primary would reintroduce the first-run-empty bug while still
-            #      referencing a real protocol file -- so (b) alone misses it.
-            #      Scoped to `!`cat`-prefixed lines so prose that merely
-            #      *mentions* a loader (e.g. a doc bullet) is not mis-flagged.
-            if line.lstrip().startswith("!`cat") and "2>/dev/null" in line:
-                missing = [fb for fb in REQUIRED_FALLBACKS if fb not in line]
-                if missing:
-                    rel = md.relative_to(ROOT)
-                    failures.append(
-                        f"(b2) loader line in {rel} dropped fallback path(s) "
-                        f"{missing} -- reintroduces the first-run-empty bug"
-                    )
+    if not saw_loader:
+        failures.append("(b) scanned skills but found no `!` loader lines at all")
 
-    # (c) Fallback resolution -- execute the real loader snippet for the
-    #     sample protocol under each scenario.
-    sample_path = PROTOCOLS_DIR / SAMPLE
-    if not sample_path.is_file():
-        # Already reported by (a); skip the live scenarios cleanly rather than
-        # crashing with a traceback that hides the (a)/(b) diagnostics.
-        failures.append(
-            f"(c) sample protocol {SAMPLE} is missing; skipping live "
-            "fallback-resolution scenarios"
-        )
-        return failures
-    real_content = sample_path.read_text(encoding="utf-8")
+    if not LOAD_PROTOCOL.is_file():
+        return failures  # (c)/(d) cannot run without the scripts
 
+    real = (PROTOCOLS_DIR / f"{SAMPLE}.md").read_text(encoding="utf-8")
+
+    # (c1) CLAUDE_PLUGIN_ROOT set -> candidate 1.
     with tempfile.TemporaryDirectory() as tmp:
-        # SCENARIO 1: CLAUDE_PLUGIN_ROOT set -> path-1 hit.
-        out = _run_loader(
-            SAMPLE,
-            {"CLAUDE_PLUGIN_ROOT": str(ROOT), "CLAUDE_SKILL_DIR": None},
-            cwd=tmp,
-        )
-        if out != real_content:
-            failures.append(
-                "(c1) PLUGIN_ROOT scenario did not resolve to real protocol content "
-                f"(got {len(out)} bytes, expected {len(real_content)})"
-            )
+        out = _run(LOAD_PROTOCOL, SAMPLE, {"CLAUDE_PLUGIN_ROOT": str(ROOT)}, cwd=tmp)
+        if out.stdout != real:
+            failures.append(f"(c1) PLUGIN_ROOT scenario got {len(out.stdout)}B, expected {len(real)}B")
 
-        # SCENARIO 2: only CLAUDE_SKILL_DIR set -> path-2 (../_shared) hit.
-        skill_dir = str(ROOT / "skills" / "qa-engineer")
-        out = _run_loader(
-            SAMPLE,
-            {"CLAUDE_PLUGIN_ROOT": None, "CLAUDE_SKILL_DIR": skill_dir},
-            cwd=tmp,
-        )
-        if out != real_content:
-            failures.append(
-                "(c2) SKILL_DIR (../_shared) scenario did not resolve to real "
-                f"protocol content (got {len(out)} bytes, expected {len(real_content)})"
-            )
+    # (c2) PLUGIN_ROOT unset -> script-relative candidate (always in-plugin).
+    with tempfile.TemporaryDirectory() as tmp:
+        out = _run(LOAD_PROTOCOL, SAMPLE, {"CLAUDE_PLUGIN_ROOT": None}, cwd=tmp)
+        if out.stdout != real:
+            failures.append(f"(c2) script-relative scenario got {len(out.stdout)}B, expected {len(real)}B")
 
-    # SCENARIO 3: both unset, cwd contains drydock/.protocols/<sample> -> path-3 hit.
+    # (c3) script copied somewhere WITHOUT a protocols/ sibling; cwd holds
+    #      drydock/.protocols/<sample> -> candidate 3 (runtime path) hit.
     sentinel = "SENTINEL-DRYDOCK-PROTOCOLS-FALLBACK\n"
     with tempfile.TemporaryDirectory() as tmp3:
-        proto_dir = Path(tmp3) / "drydock" / ".protocols"
-        proto_dir.mkdir(parents=True)
-        (proto_dir / SAMPLE).write_text(sentinel, encoding="utf-8")
-        out = _run_loader(
-            SAMPLE,
-            {"CLAUDE_PLUGIN_ROOT": None, "CLAUDE_SKILL_DIR": None},
-            cwd=tmp3,
-        )
-        if out != sentinel:
-            failures.append(
-                "(c3) drydock/.protocols fallback did not resolve to the sentinel "
-                f"(got {out!r}, expected {sentinel!r})"
-            )
+        lone = Path(tmp3) / "lone-load-protocol.sh"
+        lone.write_text(LOAD_PROTOCOL.read_text(encoding="utf-8"), encoding="utf-8")
+        proto = Path(tmp3) / "cwd" / "drydock" / ".protocols"
+        proto.mkdir(parents=True)
+        (proto / f"{SAMPLE}.md").write_text(sentinel, encoding="utf-8")
+        out = _run(lone, SAMPLE, {"CLAUDE_PLUGIN_ROOT": None}, cwd=str(Path(tmp3) / "cwd"))
+        if out.stdout != sentinel:
+            failures.append(f"(c3) drydock/.protocols fallback got {out.stdout!r}, expected sentinel")
 
-    # SCENARIO 4: cold first run -- nothing set, no drydock/.protocols ->
-    #             loader degrades gracefully to empty via `|| true`.
+    # (c4) cold start: no PLUGIN_ROOT, no sibling protocols/, no runtime copy.
     with tempfile.TemporaryDirectory() as tmp4:
-        out = _run_loader(
-            SAMPLE,
-            {"CLAUDE_PLUGIN_ROOT": None, "CLAUDE_SKILL_DIR": None},
-            cwd=tmp4,
-        )
-        if out != "":
-            failures.append(
-                "(c4) cold-start scenario expected empty stdout (graceful degrade) "
-                f"but got {out!r}"
-            )
+        lone = Path(tmp4) / "lone-load-protocol.sh"
+        lone.write_text(LOAD_PROTOCOL.read_text(encoding="utf-8"), encoding="utf-8")
+        out = _run(lone, SAMPLE, {"CLAUDE_PLUGIN_ROOT": None}, cwd=tmp4)
+        if out.stdout != "" or out.returncode != 0:
+            failures.append(f"(c4) cold start expected empty+exit0, got {out.stdout!r} rc={out.returncode}")
+
+    # (c5) path-traversal / bad slug -> empty, exit 0 (no arbitrary read).
+    with tempfile.TemporaryDirectory() as tmp5:
+        for bad in ("../../../etc/passwd", "a/b", "Foo", ""):
+            out = _run(LOAD_PROTOCOL, bad, {"CLAUDE_PLUGIN_ROOT": str(ROOT)}, cwd=tmp5)
+            if out.stdout != "" or out.returncode != 0:
+                failures.append(f"(c5) bad slug {bad!r} should be empty+exit0, got {out.stdout!r}")
+
+    # (d) load-file.sh: cat file / ls dir / empty-missing / reject abs & traversal.
+    if LOAD_FILE.is_file():
+        with tempfile.TemporaryDirectory() as tmp:
+            cwd = Path(tmp)
+            (cwd / "f.txt").write_text("hello\n", encoding="utf-8")
+            (cwd / "d").mkdir()
+            (cwd / "d" / "x").write_text("x", encoding="utf-8")
+            checks = [
+                ("f.txt", "hello\n", "cat file"),
+                ("d", "x\n", "ls dir"),
+                ("missing.txt", "", "missing -> empty"),
+                ("/etc/passwd", "", "absolute -> rejected"),
+                ("d/../f.txt", "", "traversal -> rejected"),
+            ]
+            for arg, expect, label in checks:
+                out = _run(LOAD_FILE, arg, {}, cwd=str(cwd))
+                if out.stdout != expect or out.returncode != 0:
+                    failures.append(
+                        f"(d) load-file.sh {label}: arg={arg!r} got {out.stdout!r} "
+                        f"rc={out.returncode}, expected {expect!r}"
+                    )
 
     return failures
 

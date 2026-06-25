@@ -10,8 +10,8 @@
 #   drydock/.orchestrator/receipts/        (gate receipts)
 #   drydock/.orchestrator/overrides/       (gate override receipts)
 #
-# Protocol source resolution (first existing wins), mirroring the SKILL.md
-# loaders' belt-and-suspenders order:
+# Protocol source resolution (first existing wins), mirroring load-protocol.sh's
+# resolution order:
 #   1. $CLAUDE_PLUGIN_ROOT/skills/_shared/protocols
 #   2. $CLAUDE_SKILL_DIR/../_shared/protocols
 #   3. <this script>/../../_shared/protocols   (script-relative; always ships in-plugin)

@@ -2,6 +2,32 @@
 
 All notable changes to **Drydock**.
 
+## [2.2.1] — 2026-06-25
+
+Patch fix for a skill-load failure on permission-checked setups (e.g. the VS Code extension and managed installs).
+
+### Fixed
+- **Skill `!` protocol loaders no longer hard-fail the permission check.** Every
+  worker `SKILL.md` loaded shared protocols with a compound shell line —
+  `cat "$CLAUDE_PLUGIN_ROOT/…" || cat "$CLAUDE_SKILL_DIR/…" || cat drydock/.protocols/… || true`.
+  Claude Code decomposes compound commands at `||` and requires each sub-command
+  to be allow-listed, so skill expansion failed with *"This Bash command contains
+  multiple operations … require approval"* — most visibly on the orchestrator, the
+  one skill with no `allowed-tools`. Loaders are now SINGLE commands that call two
+  bundled helpers — `skills/_shared/load-protocol.sh` (protocol name → 3-path
+  fallback) and `skills/_shared/load-file.sh` (project file → `cat`, directory →
+  `ls`) — which do the fallback internally and always exit 0. Every skill now
+  declares narrow `allowed-tools` grants for those two helpers, so loaders run with
+  no prompt and no user-side settings, marketplace installs included. The helpers
+  reject absolute paths, parent traversal, and non-slug protocol names.
+
+### Changed
+- **`test_loader_resolution.py` now guards the single-command convention** — it
+  fails on any `!` loader containing a compound operator (the exact regression
+  fixed here), checks every `load-protocol.sh` reference resolves to a real
+  protocol file, and exercises both helpers across all fallback scenarios plus
+  their traversal guards.
+
 ## [2.2.0] — 2026-06-25
 
 Marketplace-submission release. The plugin is renamed to **drydock**, engagement modes become **autonomy levels**, the documentation is hardened and clarified for publication, and the findings from a pre-submission audit are fixed. No change to generated-artifact behavior or the public skill contract beyond the rename.

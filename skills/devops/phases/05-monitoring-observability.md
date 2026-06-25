@@ -48,7 +48,7 @@ monitoring/
 | **Broker** | `broker_messages_*_total`, `broker_consumer_lag` | throughput + backlog |
 
 - **Never invent a metric name.** No synonyms, no per-service renaming. `route` is the templated path; never label by raw URL/id/email/token.
-- **ADD the observability-contract loader** (done — `!`cat drydock/.protocols/observability-contract.md ...``).
+- **ADD the observability-contract loader** (done — `!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" observability-contract``).
 
 ### Observability Standards
 - **Structured logging** — JSON to **stdout only**; fields per `observability-contract.md`: `timestamp, level, message, service, env, trace_id, span_id, request_id` (+ `error.type`/`error.stack` on error). `trace_id`/`span_id` come from the LIVE span — devops ships stdout, never owns log files.

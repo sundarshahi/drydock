@@ -4,33 +4,33 @@ description: >
   [drydock internal] Makes systems reliable in production —
   SLOs, monitoring, alerting, chaos engineering, incident runbooks,
   capacity planning. Routed via the drydock orchestrator.
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" *), Bash(bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" *)
 ---
 
 # SRE (Site Reliability Engineering) Skill
 
 ## Preprocessing
 
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/ux-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/ux-protocol.md" 2>/dev/null || cat drydock/.protocols/ux-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/input-validation.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/input-validation.md" 2>/dev/null || cat drydock/.protocols/input-validation.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/tool-efficiency.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/tool-efficiency.md" 2>/dev/null || cat drydock/.protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/visual-identity.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/visual-identity.md" 2>/dev/null || cat drydock/.protocols/visual-identity.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/freshness-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/freshness-protocol.md" 2>/dev/null || cat drydock/.protocols/freshness-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/receipt-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/receipt-protocol.md" 2>/dev/null || cat drydock/.protocols/receipt-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/boundary-safety.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/boundary-safety.md" 2>/dev/null || cat drydock/.protocols/boundary-safety.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/conflict-resolution.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/conflict-resolution.md" 2>/dev/null || cat drydock/.protocols/conflict-resolution.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/grounding-protocol.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/grounding-protocol.md" 2>/dev/null || cat drydock/.protocols/grounding-protocol.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/observability-contract.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/observability-contract.md" 2>/dev/null || cat drydock/.protocols/observability-contract.md 2>/dev/null || true`
-!`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat drydock/.protocols/architecture-boundaries.md 2>/dev/null || true`
-!`cat .drydock.yaml 2>/dev/null || echo "No config — using defaults"`
-!`cat drydock/.orchestrator/codebase-context.md 2>/dev/null || true`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" ux-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" input-validation`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" tool-efficiency`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" visual-identity`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" freshness-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" receipt-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" boundary-safety`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" conflict-resolution`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" grounding-protocol`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" observability-contract`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" architecture-boundaries`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" .drydock.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/.orchestrator/codebase-context.md`
 
 ## Cross-Skill Contracts (READ — do not invent names or numbers)
 
 These artifacts are produced by other skills and are AUTHORITATIVE. SRE READS them; SRE never redefines them.
 
-!`cat docs/architecture/performance-budget.yaml 2>/dev/null || echo "No performance-budget.yaml — solution-architect has not run; capacity/SLO targets fall back to observability-contract defaults"`
-!`cat config/feature-flags.yaml 2>/dev/null || echo "No feature-flags.yaml — software-engineer has not run; kill-switch step degrades to manual mitigation"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" docs/architecture/performance-budget.yaml`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" config/feature-flags.yaml`
 
 - **Metric / log / span names** come from `observability-contract.md` (loaded above). Every burn-rate alert, dashboard panel, load-test assertion, and runbook query SRE writes MUST reference ONLY names declared there: `http_requests_total` (labels `method,route,status_class`), `http_request_duration_seconds` (with exemplars), `http_requests_in_flight`, `*_pool_connections_*`, `*_pool_wait_seconds`, `broker_consumer_lag`, the structured-log fields, and the span attributes. **A burn-rate alert that queries `http_requests_total{status=~"5.."}` is BROKEN — the contract label is `status_class="5xx"`.** Grep your generated alerts/dashboards for any name absent from the contract before handoff (closes the "alert references a metric no code emits" gap).
 - **Error format** is RFC 9457 `application/problem+json` (`{type,title,status,detail,instance}` + `trace_id`, `errors[]`), owned by solution-architect's reusable `Problem` schema and the `libs/shared/errors/` catalog. Runbooks and incident comms reference the catalog code + `trace_id`, never an ad-hoc envelope.
@@ -47,7 +47,7 @@ If codebase context indicates `brownfield` mode:
 
 ## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
+!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-file.sh" drydock/.orchestrator/settings.md`
 
 | Mode | Behavior |
 |------|----------|
