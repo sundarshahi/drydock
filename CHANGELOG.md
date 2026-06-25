@@ -10,7 +10,7 @@ All notable changes to **Drydock**.
   changes the install name (`drydock`), the skill namespace (`drydock:<skill>`),
   the `/drydock` command, the runtime workspace directory (`drydock/`), and the
   project config file (`.drydock.yaml`). The GitHub repository itself stays at
-  `sundarshahi/shipyard`. Verified by the eval suite, `validate --strict`, and a
+  `sundarshahi/drydock`. Verified by the eval suite, `validate --strict`, and a
   live routing smoke test (`route='drydock:drydock'`, zero plugin errors).
 
 ### Changed

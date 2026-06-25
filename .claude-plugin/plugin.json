@@ -6,8 +6,8 @@
     "name": "sundarshahi",
     "email": "shahithakurisundar@gmail.com"
   },
-  "homepage": "https://github.com/sundarshahi/shipyard",
-  "repository": "https://github.com/sundarshahi/shipyard",
+  "homepage": "https://github.com/sundarshahi/drydock",
+  "repository": "https://github.com/sundarshahi/drydock",
   "license": "MIT",
-  "keywords": ["drydock", "shipyard", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "vapt", "owasp", "pentest", "sre", "ai", "ml", "llm", "compliance", "soc2", "gdpr", "hipaa", "pci-dss", "observability", "opentelemetry", "12-factor", "feature-flags", "clean-architecture"]
+  "keywords": ["drydock", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "vapt", "owasp", "pentest", "sre", "ai", "ml", "llm", "compliance", "soc2", "gdpr", "hipaa", "pci-dss", "observability", "opentelemetry", "12-factor", "feature-flags", "clean-architecture"]
 }

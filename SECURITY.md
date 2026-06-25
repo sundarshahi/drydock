@@ -15,7 +15,7 @@ The latest released version on `main` receives security fixes. Older versions ar
 
 Please report security issues **privately** — do not open a public issue for an exploitable vulnerability.
 
-- Preferred: open a [GitHub Security Advisory](https://github.com/sundarshahi/shipyard/security/advisories/new) on the repository.
+- Preferred: open a [GitHub Security Advisory](https://github.com/sundarshahi/drydock/security/advisories/new) on the repository.
 - Alternative: email **shahithakurisundar@gmail.com** with the details.
 
 Include:

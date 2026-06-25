@@ -183,7 +183,7 @@ Version lives in 4 places. All must match:
 1. .claude-plugin/plugin.json                                     → version field
 2. .claude-plugin/marketplace.json                                → plugins[0].version
 3. ~/.claude/plugins/installed_plugins.json                        → drydock@sundarshahi entry
-4. ~/.claude/plugins/cache/sundarshahi/shipyard/{version}/ → directory name
+4. ~/.claude/plugins/cache/sundarshahi/drydock/{version}/ → directory name
 ```
 
 **Versioning policy:**
@@ -526,7 +526,7 @@ You are likely a Claude Code session implementing a change to this plugin. Here 
 4. **Read the protocols** (`skills/_shared/protocols/`) that the skill loads. Your changes must not violate them.
 5. **Changes propagate.** If you modify a protocol, it affects all 14 skills. If you modify the orchestrator's routing table, it affects what skills run for which requests. Think through the blast radius.
 6. **Version management is manual.** When bumping versions, update all 4 locations listed in Section 4. Miss one and the install breaks.
-7. **Test by installing.** After changes, copy files to `~/.claude/plugins/cache/sundarshahi/shipyard/{version}/` and update `~/.claude/plugins/installed_plugins.json`. Then invoke the skill to verify.
+7. **Test by installing.** After changes, copy files to `~/.claude/plugins/cache/sundarshahi/drydock/{version}/` and update `~/.claude/plugins/installed_plugins.json`. Then invoke the skill to verify.
 8. **The user (Quan) is non-technical.** He is a product/business person. His partner is a senior engineer. Design for both: simple interactions for the user, rigorous output for the engineer.
 9. **Ask before destroying.** If you're about to delete files, remove protocols, change version numbers, or modify the orchestrator — confirm with the user first.
 

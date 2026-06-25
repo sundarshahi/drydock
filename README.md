@@ -9,7 +9,7 @@ Drydock is a set of orchestrated skills (each shows up as a `drydock:<skill>` in
 Install Drydock from inside Claude Code using the plugin marketplace flow:
 
 ```text
-/plugin marketplace add sundarshahi/shipyard
+/plugin marketplace add sundarshahi/drydock
 /plugin install drydock
 ```
 
@@ -22,7 +22,7 @@ This pulls the published plugin and registers its skills, hooks, and shared prot
 For local development or to run an unreleased checkout:
 
 ```bash
-git clone https://github.com/sundarshahi/shipyard ~/.claude/plugins/drydock
+git clone https://github.com/sundarshahi/drydock ~/.claude/plugins/drydock
 claude --plugin-dir ~/.claude/plugins/drydock
 ```
 
