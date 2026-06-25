@@ -24,6 +24,10 @@ Each artifact type has a single authoritative skill. Contributors may flag issue
 | Monitoring infrastructure (dashboards, alerts) | **devops** | sre defines thresholds, devops implements them |
 | Infrastructure (Terraform, K8s, CI/CD) | **devops** | sre reviews for reliability concerns |
 | Documentation (docs/) | **technical-writer** | — |
+| UX research, information architecture, interaction design, **design-system SPEC** | **ux-designer** | frontend-engineer IMPLEMENTS the spec as code, does NOT redefine it |
+| Positioning, messaging, GTM/launch plan, marketing-site copy, funnels | **growth-marketer** | sales-strategist consumes positioning; does NOT author pricing or sales process |
+| Pricing & packaging, sales collateral, sales process, proposals | **sales-strategist** | consumes growth-marketer positioning + security/compliance evidence; does NOT author positioning |
+| Onboarding, support ops, retention, voice-of-customer | **customer-success** | feeds prioritized feedback to product-manager; sources help-center from technical-writer docs |
 | Custom project skills | **skill-maker** | — |
 
 ## Deduplication Rules
@@ -68,3 +72,14 @@ When HARDEN phase skills find issues that require code changes:
 ### supply-chain provenance & signing
 - **security-engineer**: AUDITS supply-chain provenance and artifact signing (verifies it is correct and complete).
 - **devops**: IMPLEMENTS provenance attestation and signing in the pipeline. security-engineer audits what devops implements — neither owns both sides.
+
+### ux-designer vs frontend-engineer
+- **ux-designer**: Owns the UX — research, IA, interaction design, and the design-system SPECIFICATION (tokens, type scale, WCAG-AA color, component specs, states, motion). Produces a spec, not code.
+- **frontend-engineer**: IMPLEMENTS that spec in code. When a ux-designer design-system spec exists, it supersedes frontend-engineer's Phase 2 "functional defaults" — frontend builds to the spec, does NOT redefine it.
+
+### growth-marketer vs sales-strategist
+- **growth-marketer**: Owns positioning, messaging, and GTM/launch — the narrative and demand generation. Source of truth for how the product is described.
+- **sales-strategist**: Owns pricing & packaging, sales collateral, sales process, and proposals. CONSUMES growth-marketer's positioning as the narrative; does NOT re-author it.
+
+### customer-success vs product-manager / technical-writer
+- **customer-success**: Owns onboarding, support operations, retention, and voice-of-customer. Synthesizes feedback and routes prioritized requests to product-manager — does NOT change requirements itself. Sources the help center from technical-writer's docs — does NOT rewrite them.

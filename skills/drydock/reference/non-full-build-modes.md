@@ -187,6 +187,7 @@ AskUserQuestion(questions=[{
   "options": [
     {"label": "Product Manager", "description": "Requirements, user stories, BRD"},
     {"label": "Solution Architect", "description": "System design, API contracts, tech stack"},
+    {"label": "UX Designer", "description": "UX research, IA, interaction design, design-system spec"},
     {"label": "Software Engineer", "description": "Backend implementation"},
     {"label": "Frontend Engineer", "description": "UI components, pages, design system"},
     {"label": "QA Engineer", "description": "Tests — unit, integration, e2e, performance"},
@@ -197,6 +198,9 @@ AskUserQuestion(questions=[{
     {"label": "SRE", "description": "SLOs, chaos engineering, runbooks"},
     {"label": "Technical Writer", "description": "API docs, dev guides, architecture docs"},
     {"label": "Data Scientist", "description": "LLM optimization, ML pipelines, experiments"},
+    {"label": "Growth Marketer", "description": "Positioning, launch plan, marketing, funnels"},
+    {"label": "Sales Strategist", "description": "Pricing, sales collateral, process, proposals"},
+    {"label": "Customer Success", "description": "Onboarding, support ops, retention"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
   "multiSelect": true
@@ -204,3 +208,29 @@ AskUserQuestion(questions=[{
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
+
+---
+
+## Design (UX) Mode
+
+**Trigger:** "design the UX", "wireframes", "user flows", "design system", "UX research", "personas", "usability".
+
+Single-skill, 0 gates. Invoke directly:
+
+```python
+Skill(skill="ux-designer")
+```
+
+The UX Designer runs its phases — discovery/research → information architecture → design-system spec → interaction design → usability/accessibility — and writes the design-system spec to `docs/design/` for frontend-engineer to implement. If a frontend already exists (brownfield), it produces a UX audit + improvement spec instead of greenfield IA. Prints its own `━━━ UX Designer ━━━` header and `[N/5]` phase progress.
+
+---
+
+## Launch (GTM) Mode
+
+**Trigger:** "launch", "go to market", "GTM", "pricing", "packaging", "positioning", "marketing", "sales collateral", "onboarding", "customer success", "support".
+
+Multi-skill (3 agents), 1 gate (GTM plan). **Requires a shipped/described product** — confirm one exists before running.
+
+1. **Scope gate.** Present the GTM plan (target market, primary channels, pricing direction) via `AskUserQuestion` — these are strategic, user-owned choices.
+2. **Dispatch the wave** (parallel) to the three LAUNCH subagents per `phases/launch.md`: `growth-marketer` (positioning + launch plan + site copy + funnels), `sales-strategist` (pricing + collateral + process + trust pack), `customer-success` (onboarding + support + retention). sales-strategist consumes growth-marketer's positioning and the security/compliance evidence; customer-success sources the help center from the docs.
+3. Verify receipts, merge worktree branches, print the multi-skill completion box. customer-success carries into SUSTAIN.
