@@ -235,6 +235,7 @@ drydock/
 ├── .orchestrator/     # pipeline state + receipts
 ├── product-manager/
 ├── solution-architect/
+├── ux-designer/
 ├── software-engineer/
 ├── frontend-engineer/
 ├── qa-engineer/
@@ -244,6 +245,9 @@ drydock/
 ├── sre/
 ├── data-scientist/
 ├── technical-writer/
+├── growth-marketer/
+├── sales-strategist/
+├── customer-success/
 ├── skill-maker/
 └── compliance-officer/
 ```

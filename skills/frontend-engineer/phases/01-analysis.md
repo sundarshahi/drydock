@@ -109,11 +109,12 @@ This skill reads from two upstream sources:
 - `docs/architecture/system-diagrams/` — C4 container diagrams for understanding service boundaries
 - `docs/architecture/architecture-decision-records/` — ADRs for auth strategy, API patterns, multi-tenancy
 - `schemas/erd.md` — Entity relationships for understanding data shapes
+- `docs/design/` — UX-designer spec **if present** (IA/sitemap, navigation, user flows, wireframes, and the design-system spec). When present it is the **source of truth**: IMPLEMENT it — do not re-derive IA/flows from the BRD or re-author the design system (Phase 2 implements its tokens/components). Falls back to the BRD only when absent.
 
 ### From BRD
 - User stories with acceptance criteria
-- User flow diagrams (signup, onboarding, core workflows, admin)
-- Information architecture and navigation structure
+- User flow diagrams (signup, onboarding, core workflows, admin) — from `docs/design/` when the UX spec exists, otherwise derived from the BRD
+- Information architecture and navigation structure — from `docs/design/` when the UX spec exists, otherwise derived from the BRD
 - Role-based access requirements (admin, user, viewer, etc.)
 - Branding guidelines (if provided)
 

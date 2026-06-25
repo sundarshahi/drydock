@@ -18,7 +18,7 @@ Before creating LAUNCH tasks, re-read from disk:
 - `drydock/product-manager/BRD/brd.md` (what the product is + who it's for)
 - `drydock/solution-architect/system-design.md` and the shipped surface (`services/`, `frontend/` listing)
 - `drydock/security-engineer/findings/` + `drydock/compliance-officer/` control-evidence map (for the sales trust pack)
-- `drydock/technical-writer/` docs (for the help center)
+- `drydock/technical-writer/` docs **if present** (for the help center) — this is a **soft input**: in the canonical order technical-writer (T11) runs in SUSTAIN, so `docs/` may be empty at LAUNCH. customer-success bootstraps the help center from best-available docs (API specs, READMEs) and refines it once T11 lands.
 - `.orchestrator/receipts/` SHIP receipts (T7–T10) — confirm production-ready before launching
 
 ## PARALLEL #8: T14 + T15 + T16
@@ -35,7 +35,7 @@ Delegate to their subagents to run CONCURRENTLY (each backgrounded + isolated pe
 
 - **`growth-marketer`** (T14 — Marketing & Growth) — Read the BRD + shipped product. Produce positioning, messaging, the launch plan, landing-page copy + SEO briefs (handed to frontend-engineer/technical-writer), and the funnel/analytics + growth-experiment plan. Write deliverables to `docs/marketing/`, workspace artifacts to `drydock/growth-marketer/`. Ground all market/competitor claims via WebSearch (freshness). When complete, write a receipt to `drydock/.orchestrator/receipts/T14-growth-marketer.json` and mark its task complete.
 - **`sales-strategist`** (T15 — Sales) — Consume growth-marketer positioning (start may stagger slightly to read it) + product + security/compliance evidence. Produce pricing & packaging, sales collateral (one-pager, deck outline, demo script), sales process (qualification, pipeline, CRM, outbound), the enablement + security/compliance **trust pack**, and proposal/SOW templates (mark legal artifacts as requiring legal review). Deliverables to `docs/sales/`, workspace to `drydock/sales-strategist/`. Receipt to `T15-sales-strategist.json`; mark complete.
-- **`customer-success`** (T16 — Customer Success/Support) — Consume technical-writer docs + product + growth-marketer analytics. Produce the onboarding/activation journey, support operations (help center, ticket workflow, SLAs), retention/churn playbooks, and the voice-of-customer loop to product-manager. Deliverables to `docs/customer-success/`, workspace to `drydock/customer-success/`. Receipt to `T16-customer-success.json`; mark complete.
+- **`customer-success`** (T16 — Customer Success/Support) — Consume best-available docs (API specs/READMEs, plus technical-writer docs **if already present** — soft input, refined once T11 lands in SUSTAIN) + product + growth-marketer analytics. Produce the onboarding/activation journey, support operations (help center, ticket workflow, SLAs), retention/churn playbooks, and the voice-of-customer loop to product-manager. Deliverables to `docs/customer-success/`, workspace to `drydock/customer-success/`. Receipt to `T16-customer-success.json`; mark complete.
 
 Each subagent may parallelize internally up to 3 concurrent FOREGROUND sub-tasks for genuinely independent work.
 

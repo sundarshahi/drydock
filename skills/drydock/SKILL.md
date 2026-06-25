@@ -179,7 +179,7 @@ All modes share these behaviors:
 
 **Single-skill modes** (Test, Review, Architect, Document, Explore): The skill prints its own `━━━ [Skill Name] ━━━` header and `[1/N]` phase progress. No orchestrator-level completion box needed.
 
-After classifying into a non-Full-Build mode, read `${CLAUDE_PLUGIN_ROOT}/skills/drydock/reference/non-full-build-modes.md` (fallback `${CLAUDE_SKILL_DIR}/reference/non-full-build-modes.md`) and follow the section for the selected mode. The 12 per-mode subsections (execution steps, gates, authorization/scoping ceremonies, and visual flows) live there:
+After classifying into a non-Full-Build mode, read `${CLAUDE_PLUGIN_ROOT}/skills/drydock/reference/non-full-build-modes.md` (fallback `${CLAUDE_SKILL_DIR}/reference/non-full-build-modes.md`) and follow the section for the selected mode. The 14 per-mode subsections (execution steps, gates, authorization/scoping ceremonies, and visual flows) live there:
 
 | Mode | Gates | Notes |
 |------|-------|-------|
@@ -326,7 +326,7 @@ When HARDEN skills find Critical/High issues:
 | T12: Skill Maker | ALL workspace | `.claude/skills/` | `skill-maker/` |
 | T14: Growth Marketer | `product-manager/BRD/`, shipped product | `docs/marketing/` | `growth-marketer/` |
 | T15: Sales Strategist | `growth-marketer/` positioning, product, `security-engineer/` + `compliance-officer/` evidence | `docs/sales/` | `sales-strategist/` |
-| T16: Customer Success | `technical-writer/` docs, product, `growth-marketer/` analytics | `docs/customer-success/` | `customer-success/` |
+| T16: Customer Success | best-available docs (API specs/READMEs); `technical-writer/` docs (soft — refined in SUSTAIN), product, `growth-marketer/` analytics | `docs/customer-success/` | `customer-success/` |
 
 **Deliverables** go to project root (respecting `.drydock.yaml` path overrides). **Workspace artifacts** go to `drydock/<skill-name>/`.
 
@@ -420,7 +420,8 @@ At every phase transition, re-read key workspace artifacts FROM DISK before crea
 | **DEFINE → BUILD** | `product-manager/BRD/brd.md`, `solution-architect/system-design.md`, `docs/architecture/adr/*.md` (list), `api/openapi/*.yaml` (list), `.orchestrator/settings.md`, `.orchestrator/receipts/T1-*.json`, `.orchestrator/receipts/T2-*.json` |
 | **BUILD → HARDEN** | All DEFINE artifacts above + directory listing of `services/`, `frontend/`, `libs/shared/`, `.orchestrator/receipts/T3*.json`, `.orchestrator/receipts/T4*.json` |
 | **HARDEN → SHIP** | `security-engineer/findings/critical.md`, `security-engineer/findings/high.md`, `code-reviewer/findings/critical.md`, `code-reviewer/findings/high.md`, `qa-engineer/` test results, `.orchestrator/receipts/T5*.json`, `.orchestrator/receipts/T6*.json` |
-| **SHIP → SUSTAIN** | `infrastructure/` listing, `.github/workflows/` listing, `.orchestrator/receipts/T7*.json` through `.orchestrator/receipts/T10*.json` |
+| **SHIP → LAUNCH** | `infrastructure/` listing, `.github/workflows/` listing, the shipped surface (`services/`, `frontend/` listing), `security-engineer/findings/` + `compliance-officer/` evidence (for the trust pack), `.orchestrator/receipts/T7*.json` through `.orchestrator/receipts/T10*.json` |
+| **LAUNCH → SUSTAIN** | `docs/marketing/`, `docs/sales/`, `docs/customer-success/` listings, `.orchestrator/receipts/T14*.json` through `.orchestrator/receipts/T16*.json` |
 
 **How:** Use `Glob` to list files, `Read` to load content. If a file doesn't exist, skip it — don't error. Then create agent task prompts using the freshly-read data, not compressed memory.
 
