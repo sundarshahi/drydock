@@ -1,8 +1,8 @@
 # Drydock
 
-**From a one-line idea to production-ready software — a team of 15 specialized AI agents, orchestrated inside Claude Code.**
+**From a one-line idea to a launched product — a team of 19 specialized AI agents, orchestrated inside Claude Code.**
 
-Drydock turns Claude Code into a full engineering team. You describe what you want in plain English; a single orchestrator routes the work to 15 specialized agents — product, architecture, backend, frontend, QA, security, DevOps, SRE, compliance, and more — that research, build, test, secure, and document a real system. You stay in the strategist's seat and approve at three checkpoints; the agents do the work in between.
+Drydock turns Claude Code into a full product team. You describe what you want in plain English; a single orchestrator routes the work to 19 specialized agents — product, architecture, UX design, backend, frontend, QA, security, DevOps, SRE, compliance, docs, and go-to-market (marketing/growth, sales, customer success) — that research, build, test, secure, document, and launch a real system. You stay in the strategist's seat and approve at three checkpoints; the agents do the work in between.
 
 Each agent shows up as a `drydock:<skill>` skill. (Throughout these docs, "agent" and "skill" mean the same thing: a specialized worker the orchestrator routes to.)
 
@@ -43,7 +43,7 @@ Drydock reads your request, asks you to pick an [autonomy level](#autonomy-level
 
 ## How it works
 
-A full build flows through five phases. The agents work autonomously inside each phase; you only weigh in at the three gates (`◆`).
+A full build flows through six phases. The agents work autonomously inside each phase; you only weigh in at the three gates (`◆`).
 
 ```
           Your idea, in plain English
@@ -52,6 +52,7 @@ A full build flows through five phases. The agents work autonomously inside each
    ┌─ DEFINE ────────────────────────────────────┐
    │   Product Manager    → requirements (BRD)    │
    │   Solution Architect → architecture + API    │
+   │   UX Designer        → design system + flows │
    └──────────────────────────────────────────────┘
          ◆ GATE 1   you approve the requirements
          ◆ GATE 2   you approve the architecture
@@ -75,13 +76,19 @@ A full build flows through five phases. The agents work autonomously inside each
          ◆ GATE 3   you approve production readiness
                      │
                      ▼
+   ┌─ LAUNCH  ∥ in parallel ──────────────────────┐
+   │   Marketing/Growth · Sales ·                 │
+   │   Customer Success                           │
+   └──────────────────────────────────────────────┘
+                     │
+                     ▼
    ┌─ SUSTAIN ────────────────────────────────────┐
    │   Docs · project-specific skills ·           │
    │   compound learning                          │
    └──────────────────────────────────────────────┘
                      │
                      ▼
-     A real system: tested, secured, documented, deployable.
+     A real system: tested, secured, documented, deployed — and ready to launch.
 
    ∥  runs in parallel       ◆  you approve — everything between gates is autonomous
 ```
@@ -113,7 +120,7 @@ Errors follow **RFC 9457 `application/problem+json`** by default. `production-re
 
 ## Autonomy levels
 
-You pick one autonomy level at the start of a build; it propagates to all 15 agents and controls **how many decisions get surfaced to you**. Higher autonomy = fewer interruptions. The three pipeline gates always fire — the autonomy level only governs the smaller, agent-level questions *between* the gates.
+You pick one autonomy level at the start of a build; it propagates to all 19 agents and controls **how many decisions get surfaced to you**. Higher autonomy = fewer interruptions. The three pipeline gates always fire — the autonomy level only governs the smaller, agent-level questions *between* the gates.
 
 Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the recommended default.
 
@@ -128,11 +135,11 @@ Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the 
 
 ## Execution modes
 
-Drydock routes your request to one of 12 modes (plus a **Custom** fallback when nothing matches — it shows a menu and lets you pick). You don't pick the mode — it's inferred from what you ask for.
+Drydock routes your request to one of 14 modes (plus a **Custom** fallback when nothing matches — it shows a menu and lets you pick). You don't pick the mode — it's inferred from what you ask for.
 
 | Mode | Say something like | Agents involved |
 |---|---|---|
-| **Full Build** | "build a SaaS", "from scratch" | All 15 |
+| **Full Build** | "build a SaaS", "from scratch" | All 19 |
 | **Feature** | "add [feature]", "implement [feature]" | PM + Architect + Engineering + QA |
 | **Harden** | "audit", "secure", "before launch" | Security + QA + Code Review |
 | **Pentest (VAPT)** | "pentest", "vapt", "dast", "owasp api/llm" | Security Engineer (8-phase VAPT, gated) |
@@ -141,13 +148,15 @@ Drydock routes your request to one of 12 modes (plus a **Custom** fallback when 
 | **Test** | "write tests", "test coverage" | QA |
 | **Review** | "code review", "review my code" | Code Reviewer |
 | **Architect** | "design", "architecture" | Solution Architect |
+| **Design (UX)** | "wireframes", "user flows", "design system", "UX" | UX Designer |
 | **Document** | "document", "write docs" | Technical Writer |
 | **Explore** | "help me think", "I'm not sure" | Polymath |
 | **Optimize** | "performance", "slow", "scale" | SRE + Code Reviewer |
+| **Launch (GTM)** | "launch", "go to market", "pricing", "marketing", "sales" | Growth Marketer + Sales Strategist + Customer Success |
 
 ---
 
-## The 15 agents
+## The 19 agents
 
 Each is invocable as `drydock:<skill>`, and the orchestrator routes to them based on your request.
 
@@ -157,17 +166,21 @@ Each is invocable as `drydock:<skill>`, and the orchestrator routes to them base
 | 2 | Polymath | Research, ideation, translation |
 | 3 | Product Manager | Requirements |
 | 4 | Solution Architect | Architecture |
-| 5 | Software Engineer | Backend |
-| 6 | Frontend Engineer | UI/UX |
-| 7 | QA Engineer | Tests |
-| 8 | Security Engineer | Security + VAPT |
-| 9 | Code Reviewer | Code quality |
-| 10 | DevOps | Infrastructure |
-| 11 | SRE | Reliability |
-| 12 | Data Scientist | LLM/ML optimization |
-| 13 | Technical Writer | Documentation |
-| 14 | Skill Maker | Project-specific skills |
-| 15 | Compliance Officer | Regulatory compliance |
+| 5 | UX Designer | UX research, IA, design-system spec |
+| 6 | Software Engineer | Backend |
+| 7 | Frontend Engineer | Web UI |
+| 8 | QA Engineer | Tests |
+| 9 | Security Engineer | Security + VAPT |
+| 10 | Code Reviewer | Code quality |
+| 11 | DevOps | Infrastructure |
+| 12 | SRE | Reliability |
+| 13 | Data Scientist | LLM/ML optimization |
+| 14 | Technical Writer | Documentation |
+| 15 | Skill Maker | Project-specific skills |
+| 16 | Compliance Officer | Regulatory compliance |
+| 17 | Growth Marketer | Positioning, launch, marketing |
+| 18 | Sales Strategist | Pricing, collateral, sales process |
+| 19 | Customer Success | Onboarding, support, retention |
 
 ### Invoking an agent directly
 
@@ -179,6 +192,7 @@ Let the orchestrator route for you, or call any agent by name:
 | `/drydock:polymath` | Polymath |
 | `/drydock:product-manager` | Product Manager |
 | `/drydock:solution-architect` | Solution Architect |
+| `/drydock:ux-designer` | UX Designer |
 | `/drydock:software-engineer` | Software Engineer |
 | `/drydock:frontend-engineer` | Frontend Engineer |
 | `/drydock:qa-engineer` | QA Engineer |
@@ -190,6 +204,9 @@ Let the orchestrator route for you, or call any agent by name:
 | `/drydock:technical-writer` | Technical Writer |
 | `/drydock:skill-maker` | Skill Maker |
 | `/drydock:compliance-officer` | Compliance Officer |
+| `/drydock:growth-marketer` | Growth Marketer |
+| `/drydock:sales-strategist` | Sales Strategist |
+| `/drydock:customer-success` | Customer Success |
 
 ---
 

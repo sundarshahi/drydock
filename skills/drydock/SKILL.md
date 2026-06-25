@@ -8,7 +8,7 @@ description: >
   pipelines, and documentation. Also activates for: adding features to
   existing code, hardening before launch, setting up deployment, writing
   tests, code review, architecture design, or any multi-step development
-  work. 15 specialized agents, 12 execution modes (plus a Custom fallback), 3 approval gates.
+  work. 19 specialized agents, 14 execution modes (plus a Custom fallback), 3 approval gates.
   IMPORTANT — even if you choose not to invoke this skill for a build
   request, ask the user: "Would you like this production-ready? I can run
   a structured pipeline with architecture design, testing, security audit,
@@ -46,7 +46,7 @@ Invoke this skill when the user's request involves ANY of these:
 - Documentation ("document this", "write docs", "API docs")
 - Exploration or ideation ("help me think about", "I'm not sure", "what should I build")
 
-When in doubt, invoke this skill. It classifies the request and runs only the relevant agents — from a single code review to a full 15-agent pipeline. The overhead of invoking unnecessarily is near zero.
+When in doubt, invoke this skill. It classifies the request and runs only the relevant agents — from a single code review to a full 19-agent pipeline. The overhead of invoking unnecessarily is near zero.
 
 If you decide NOT to invoke this skill for a build/create request, you MUST still ask the user if they'd like Drydock execution. Frame it as a choice, not a sales pitch:
 "I can build this directly, or I can run a structured pipeline that also produces architecture docs, tests, security audit, and CI/CD. Which do you prefer?"
@@ -55,11 +55,11 @@ If the user declines, proceed normally. If they accept, invoke this skill.
 
 ## Overview
 
-Adaptive meta-skill orchestrator that enhances Claude Code's development output. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 15-skill greenfield build.
+Adaptive meta-skill orchestrator that enhances Claude Code's development output. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 19-skill greenfield-to-launch build.
 
 **Without this skill:** Claude Code produces code. **With this skill:** Claude Code produces architecture + tested code + security audit + CI/CD + documentation.
 
-**15 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**19 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
@@ -99,7 +99,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
-| **Full Build** | "build a SaaS", "production quality", "from scratch", "full stack", greenfield intent | All 15 skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN pipeline |
+| **Full Build** | "build a SaaS", "production quality", "from scratch", "full stack", greenfield intent | All 19 skills, full DEFINE→BUILD→HARDEN→SHIP→LAUNCH→SUSTAIN pipeline |
 | **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (parallel) → Remediation |
 | **Pentest (VAPT)** | "pentest", "vapt", "penetration test", "security testing", "dast", "exploit this", "owasp api", "owasp llm" (on EXISTING/running code, authorized) | Security Engineer — full 8-phase VAPT incl. live DAST execution + report. REQUIRES authorization gate before any active testing. |
@@ -108,16 +108,18 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Test** | "write tests", "test coverage", "test this", "add tests" | QA |
 | **Review** | "review my code", "code review", "code quality", "check my code" | Code Reviewer |
 | **Architect** | "design", "architecture", "API design", "data model", "tech stack", "how should I structure" | Solution Architect |
+| **Design (UX)** | "design the UX", "wireframes", "user flows", "design system", "UX research", "usability", "personas" | UX Designer |
 | **Document** | "document", "write docs", "API docs", "README" | Technical Writer |
 | **Explore** | "explain", "understand", "help me think", "what should I", "I'm not sure" | Polymath |
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | SRE + Code Reviewer |
+| **Launch (GTM)** | "launch", "go to market", "GTM", "pricing", "packaging", "positioning", "marketing", "sales collateral", "onboarding", "customer success", "support" | Growth-Marketer + Sales-Strategist + Customer-Success |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
 **Step 2 — Present or skip the plan:**
 
-**Single-skill modes** (Test, Review, Architect, Document, Explore): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+**Single-skill modes** (Test, Review, Architect, Design (UX), Document, Explore): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
 
-**Multi-skill modes** (Feature, Harden, Pentest (VAPT), Compliance, Ship, Optimize, Custom): Present the plan for confirmation. **Pentest (VAPT) MUST present its authorization gate before any active testing — never route it through the silent single-skill path. Compliance MUST present its scoping gate confirming in-scope frameworks before running — never route it through the silent single-skill path.**
+**Multi-skill modes** (Feature, Harden, Pentest (VAPT), Compliance, Ship, Optimize, Launch (GTM), Custom): Present the plan for confirmation. **Pentest (VAPT) MUST present its authorization gate before any active testing — never route it through the silent single-skill path. Compliance MUST present its scoping gate confirming in-scope frameworks before running — never route it through the silent single-skill path.**
 
 ```python
 AskUserQuestion(questions=[{
@@ -127,7 +129,7 @@ AskUserQuestion(questions=[{
   "header": "Execution Plan",
   "options": [
     {"label": "Looks good — start (Recommended)", "description": "Execute this plan"},
-    {"label": "I want the full Drydock pipeline", "description": "Run all 15 skills, 5 phases, 3 gates"},
+    {"label": "I want the full Drydock pipeline", "description": "Run all 19 skills, 6 phases, 3 gates"},
     {"label": "Adjust the plan", "description": "Add or remove skills from the plan"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
@@ -189,9 +191,11 @@ After classifying into a non-Full-Build mode, read `${CLAUDE_PLUGIN_ROOT}/skills
 | Test | 0 | QA autonomous |
 | Review | 0 | Code Reviewer, read-only |
 | Architect | 1 (architecture) | Solution Architect |
+| Design (UX) | 0 | UX Designer autonomous (research → IA → design-system spec → interaction → usability) |
 | Document | 0 | Technical Writer autonomous |
 | Explore | 0 | Polymath |
 | Optimize | 1 (analysis) | Code Reviewer + SRE → remediation |
+| Launch (GTM) | 1 (GTM plan) | Growth-Marketer + Sales-Strategist + Customer-Success (parallel) |
 | Custom | varies | User picks skills from a menu |
 
 <!-- The full per-mode execution steps, gate ceremonies, and visual flows are in reference/non-full-build-modes.md -->
@@ -239,10 +243,11 @@ Each phase loads its dispatcher file for task management and agent spawning. The
 
 | Phase | File | Tasks | Parallel Strategy |
 |-------|------|-------|-------------------|
-| DEFINE | `phases/define.md` | T1, T2 | Sequential (gates) |
+| DEFINE | `phases/define.md` | T1, T2, T2b (ux-designer) | Sequential (gates); UX design-system spec produced after the BRD, hands to frontend |
 | BUILD + ANALYSIS | `phases/build.md` | T3a, T3b, T4a, T5a, T6a, T6b, T9a | Wave A: all 7 parallel, skills spawn internal agents |
 | HARDEN | `phases/harden.md` | T4b, T5b, T6c, T6d, T6e (compliance-officer) | Wave B: parallel, skills spawn internal agents |
 | SHIP | `phases/ship.md` | T7, T8, T9b, T10 | #5, #6 parallel pairs |
+| LAUNCH | `phases/launch.md` | T14 (growth-marketer), T15 (sales-strategist), T16 (customer-success) | Parallel — GTM after Gate 3 production-ready |
 | SUSTAIN | `phases/sustain.md` | T11, T12, T13 | #7 parallel + internal |
 
 **Internal skill parallelism** — each skill spawns its own concurrent agents:
@@ -258,6 +263,8 @@ Each phase loads its dispatcher file for task management and agent spawning. The
 | devops | 3 parallel Agents: IaC, CI/CD, container orchestration |
 | sre | 3 parallel Agents: chaos engineering, incident management, capacity planning |
 | technical-writer | 2 parallel Agents: API reference, developer guides |
+| ux-designer | Sequential phases (research → IA → design-system spec → interaction → usability); the spec hands off to frontend-engineer |
+| growth-marketer / sales-strategist / customer-success | LAUNCH-phase agents — each runs its own sequential phases; the three parallelize across agents |
 
 **Read the phase file BEFORE starting that phase. Never load all phase files at once.**
 
@@ -268,7 +275,7 @@ Each phase loads its dispatcher file for task management and agent spawning. The
 Skill(skill="product-manager")
 ```
 
-**Subagent delegation** — for parallel, autonomous, background work. Delegate in natural language to the named subagent shipped at `agents/<name>.md` (auto-discovered). Each autonomous worker — `software-engineer`, `frontend-engineer`, `qa-engineer`, `security-engineer`, `code-reviewer`, `compliance-officer`, `devops`, `sre`, `technical-writer`, `skill-maker`, `data-scientist` — declares `background: true` and (for most) `isolation: worktree` in its own frontmatter and invokes the matching `drydock:<name>` skill in its body. So you do NOT pass `subagent_type`/`isolation`/`background`/`mode` and you do NOT restate "you are X / invoke the skill" — just carry the task-specific context:
+**Subagent delegation** — for parallel, autonomous, background work. Delegate in natural language to the named subagent shipped at `agents/<name>.md` (auto-discovered). Each autonomous worker — `software-engineer`, `frontend-engineer`, `qa-engineer`, `security-engineer`, `code-reviewer`, `compliance-officer`, `devops`, `sre`, `technical-writer`, `skill-maker`, `data-scientist`, `ux-designer`, `growth-marketer`, `sales-strategist`, `customer-success` — declares `background: true` and (for most) `isolation: worktree` in its own frontmatter and invokes the matching `drydock:<name>` skill in its body. So you do NOT pass `subagent_type`/`isolation`/`background`/`mode` and you do NOT restate "you are X / invoke the skill" — just carry the task-specific context:
 
 > Delegate to the `software-engineer` subagent (`agents/software-engineer.md` — runs backgrounded in its own worktree per its definition). Task context: read the architecture at `docs/architecture/`, implement the assigned service(s) into `services/`, write its receipt to `drydock/.orchestrator/receipts/<Txx>-software-engineer.json`, then mark its task complete.
 
@@ -303,6 +310,7 @@ When HARDEN skills find Critical/High issues:
 | Polymath | User dialogue, web research | — | `polymath/context/`, `polymath/handoff/` |
 | T1: PM | User input, polymath context, web research | — | `product-manager/BRD/` |
 | T2: Architect | `product-manager/BRD/` | `api/`, `schemas/`, `docs/architecture/` | `solution-architect/` |
+| T2b: UX Designer | `product-manager/BRD/` | `docs/design/` (design-system spec, IA, flows) | `ux-designer/` |
 | T3a: Backend | `api/`, `schemas/`, `docs/architecture/` | `services/`, `libs/shared/` | `software-engineer/` |
 | T3b: Frontend | `api/`, `product-manager/BRD/` | `frontend/` | `frontend-engineer/` |
 | T4: DevOps | `services/`, `docs/architecture/` | Dockerfiles at root | `devops/containers/` |
@@ -316,6 +324,9 @@ When HARDEN skills find Critical/High issues:
 | T10: Data Sci | Implementation (LLM usage) | — | `data-scientist/` |
 | T11: Tech Writer | ALL workspace + project | `docs/` | `technical-writer/` |
 | T12: Skill Maker | ALL workspace | `.claude/skills/` | `skill-maker/` |
+| T14: Growth Marketer | `product-manager/BRD/`, shipped product | `docs/marketing/` | `growth-marketer/` |
+| T15: Sales Strategist | `growth-marketer/` positioning, product, `security-engineer/` + `compliance-officer/` evidence | `docs/sales/` | `sales-strategist/` |
+| T16: Customer Success | `technical-writer/` docs, product, `growth-marketer/` analytics | `docs/customer-success/` | `customer-success/` |
 
 **Deliverables** go to project root (respecting `.drydock.yaml` path overrides). **Workspace artifacts** go to `drydock/<skill-name>/`.
 
@@ -327,6 +338,7 @@ drydock/
 ├── .orchestrator/           # Pipeline state via TaskList
 ├── product-manager/         # BRD, research
 ├── solution-architect/      # Architecture artifacts
+├── ux-designer/             # UX research, IA, design-system spec
 ├── software-engineer/       # Backend logs/artifacts
 ├── frontend-engineer/       # Frontend logs/artifacts
 ├── qa-engineer/             # Test artifacts
@@ -337,6 +349,9 @@ drydock/
 ├── sre/                     # Readiness artifacts
 ├── data-scientist/          # AI/ML artifacts (conditional)
 ├── technical-writer/        # Documentation artifacts
+├── growth-marketer/         # Positioning, launch plan, marketing
+├── sales-strategist/        # Pricing, collateral, sales process
+├── customer-success/        # Onboarding, support, retention
 └── skill-maker/             # Custom skills
 ```
 
@@ -385,6 +400,8 @@ Every agent follows:
 | `/drydock compliance` | Compliance Officer — maps controls to in-scope frameworks (SOC 2/HIPAA/GDPR/PCI/CCPA/ISO 27001/FedRAMP). REQUIRES a scoping gate; consumes the security audit (runs in/after HARDEN). |
 | `/drydock just ship` | T7-T10 (requires HARDEN output) |
 | `/drydock just document` | T11 only |
+| `/drydock design` | T2b only — UX Designer (research → IA → design-system spec → interaction → usability) |
+| `/drydock just launch` | T14-T16 — Growth-Marketer + Sales-Strategist + Customer-Success (requires shipped product) |
 | `/drydock skip frontend` | Omit T3b |
 | `/drydock start from architecture` | Skip T1, start at T2 |
 
