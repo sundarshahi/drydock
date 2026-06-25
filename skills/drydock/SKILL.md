@@ -72,7 +72,7 @@ Detailed procedures live in referenced files (progressive disclosure). Load each
 | `reference/non-full-build-modes.md` | After classifying into a non-Full-Build mode — read the section for the selected mode (Feature, Harden, Pentest/VAPT, Compliance, Ship, Test, Review, Architect, Document, Explore, Optimize, Custom). |
 | `phases/full-build-setup.md` | When mode is Full Build — the 11-step bootstrap (workspace + protocols, brownfield detection, autonomy level + parallelism selection, polymath pre-flight, task-graph creation) before Phase 1. |
 | `phases/gates.md` | Before presenting any of the 3 strategic gates — ceremonies, receipt verification, the BLOCKING production-readiness evaluation, override receipts, rework loops. |
-| `reference/task-graph.md` | When creating the task graph — two-wave dependency graph, wave/transition announcements, task tables, dynamic task generation, conditional tasks. |
+| `reference/task-graph.md` | When creating the task graph — per-phase dependency graph, phase/transition announcements, task tables, dynamic task generation, conditional tasks. |
 | `reference/final-summary.md` | At pipeline completion — the final summary box and cost aggregation. |
 
 ## When to Use
@@ -239,14 +239,14 @@ The 3 strategic gates (BRD, Architecture, Production Readiness) — ceremonies, 
 
 ## Phase Execution
 
-Each phase loads its dispatcher file for task management and agent spawning. The full two-wave task dependency graph, wave announcements, task tables, dynamic task generation, and conditional tasks are in `${CLAUDE_PLUGIN_ROOT}/skills/drydock/reference/task-graph.md` (fallback `${CLAUDE_SKILL_DIR}/reference/task-graph.md`) — read it when creating the task graph.
+Each phase loads its dispatcher file for task management and agent spawning. The full per-phase task dependency graph, phase announcements, task tables, dynamic task generation, and conditional tasks are in `${CLAUDE_PLUGIN_ROOT}/skills/drydock/reference/task-graph.md` (fallback `${CLAUDE_SKILL_DIR}/reference/task-graph.md`) — read it when creating the task graph.
 
 | Phase | File | Tasks | Parallel Strategy |
 |-------|------|-------|-------------------|
 | DEFINE | `phases/define.md` | T1, T2, T2b (ux-designer) | Sequential (gates); UX design-system spec produced after the BRD, hands to frontend |
-| BUILD + ANALYSIS | `phases/build.md` | T3a, T3b, T4a, T5a, T6a, T6b, T9a | Wave A: all 7 parallel, skills spawn internal agents |
-| HARDEN | `phases/harden.md` | T4b, T5b, T6c, T6d, T6e (compliance-officer) | Wave B: parallel, skills spawn internal agents |
-| SHIP | `phases/ship.md` | T7, T8, T9b, T10 | #5, #6 parallel pairs |
+| BUILD | `phases/build.md` | T3a, T3b, T4 | Parallel (#1, #2); skills spawn internal agents |
+| HARDEN | `phases/harden.md` | T5, T6a, T6b, T6e (compliance-officer) | Parallel (#3, #4) against the written code; skills spawn internal agents |
+| SHIP | `phases/ship.md` | T7, T8, T9, T10 | #5, #6 parallel pairs |
 | LAUNCH | `phases/launch.md` | T14 (growth-marketer), T15 (sales-strategist), T16 (customer-success) | Parallel — GTM after Gate 3 production-ready |
 | SUSTAIN | `phases/sustain.md` | T11, T12, T13 (+ customer-success carry-over from LAUNCH — operated, not re-dispatched) | #7 parallel + internal |
 
@@ -459,12 +459,12 @@ There is no `TeamDelete` step — TeamCreate/TeamDelete no longer exist, and sub
 | One-size-fits-all architecture | Architecture is derived from constraints (scale, team, budget, compliance). A 100-user internal tool does NOT need microservices + K8s. |
 | Writing stubs | No `// TODO: implement` in production code |
 | Hardcoded paths | Read `.drydock.yaml` for path overrides |
-| Sequential when parallel possible | Maximum parallelism: two-wave execution + internal skill agents. Every independent unit gets its own agent |
+| Sequential when parallel possible | Maximum parallelism: per-phase parallel execution + internal skill agents. Every independent unit gets its own agent |
 | Duplicating security review | code-reviewer references security-engineer findings |
 | `✓ Analysis complete` without numbers | Every completion line MUST include concrete counts |
 | Skipping pipeline dashboard reprint | Dashboard reprints at every phase transition and gate |
 | Using emoji for status | Unicode symbols only (`● ○ ✓ ✗ ⧖`) — no emoji |
-| Missing wave announcements | Print Tier 2 box before and after every parallel wave |
+| Missing phase announcements | Print Tier 2 box before and after every parallel phase |
 | Opening a gate without verifying receipts | Read receipts and verify artifacts exist on disk BEFORE presenting any gate. No receipt = task didn't complete properly. |
 | Skipping re-anchor at phase transitions | Re-read workspace artifacts from disk at every transition. Your compressed memory of the architecture spec is lossy after 20+ minutes. |
 | Trusting agent metrics without re-derivation | Gate 3 RE-DERIVES tests/coverage from ground-truth artifacts via `scripts/verify-gate.py` — a receipt whose self-reported numbers contradict the JUnit/coverage artifacts is a blocking breach, not a pass. Never gate on receipt `metrics` alone. |

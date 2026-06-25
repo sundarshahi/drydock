@@ -4,40 +4,32 @@ This phase manages tasks T3a (Backend), T3b (Frontend), and T4 (DevOps Container
 
 ## Visual Output
 
-Print pipeline dashboard with BUILD ● active on phase start. Then print Wave A announcement:
+Print pipeline dashboard with BUILD ● active on phase start. Then print the BUILD announcement:
 ```
-┌─ WAVE A: BUILD + ANALYSIS ────────────── {N} agents ─┐
+┌─ BUILD ───────────────────────────────── {N} agents ─┐
 │                                                        │
 │  T3a  Software Engineer    {services from architecture}│
 │  T3b  Frontend Engineer    {pages from BRD}            │
-│  T4a  DevOps               Dockerfiles + CI skeleton   │
-│  T5a  QA Engineer          test plan from BRD          │
-│  T6a  Security Engineer    STRIDE threat model         │
-│  T6b  Code Reviewer        conformance checklist       │
-│  T9a  SRE                  SLO definitions             │
+│  T4   DevOps               Dockerfiles + containerization│
 │                                                        │
 │  All agents launched. Working autonomously...          │
 └────────────────────────────────────────────────────────┘
 ```
 
-When Wave A completes, print the checkmark cascade:
+When BUILD completes, print the checkmark cascade:
 ```
-┌─ WAVE A COMPLETE ─────────────────────── ⏱ {time} ─┐
+┌─ BUILD COMPLETE ──────────────────────── ⏱ {time} ─┐
 │                                                      │
 │  ✓ Software Engineer    {N} services, {M} endpoints  │
 │  ✓ Frontend Engineer    {N} pages, {M} components    │
 │  ✓ DevOps               {N} Dockerfiles, 1 compose   │
-│  ✓ QA Engineer          {N} test cases planned       │
-│  ✓ Security Engineer    STRIDE: {N} threats          │
-│  ✓ Code Reviewer        {N} checkpoints defined      │
-│  ✓ SRE                  {N} SLOs, {M} alerts         │
 │                                                      │
 │  {N}/{N} complete                                    │
-│  → Starting Wave B ({M} agents against written code) │
+│  → Starting HARDEN ({M} agents against written code) │
 └──────────────────────────────────────────────────────┘
 ```
 
-Then print Wave B announcement and completion similarly. Each agent's completion line MUST include concrete numbers.
+Each agent's completion line MUST include concrete numbers.
 
 ## Re-Anchor
 
@@ -46,7 +38,7 @@ Before creating any tasks, re-read key artifacts from disk:
 - `drydock/solution-architect/system-design.md`
 - `docs/architecture/adr/*.md` (Glob to list, Read key ADRs)
 - `api/openapi/*.yaml` (Glob to list)
-- `drydock/security-engineer/security-requirements.md` — the EARLY STRIDE-derived security-requirements artifact emitted by T6a in DEFINE/Wave A. This is a **mandatory BUILD input**: every BUILD delegation below MUST instruct its subagent to read it and treat its controls (authn/authz, input-validation, output-encoding, secrets handling per threat) as acceptance criteria, not optional advice.
+- `drydock/security-engineer/security-requirements.md` — the EARLY STRIDE-derived security-requirements artifact emitted by the security-engineer (T6a) at the start of BUILD (see `phases/define.md` sequence note). This is a **mandatory BUILD input**: every BUILD delegation below MUST instruct its subagent to read it and treat its controls (authn/authz, input-validation, output-encoding, secrets handling per threat) as acceptance criteria, not optional advice.
 - `.orchestrator/receipts/T1-*.json`, `.orchestrator/receipts/T2-*.json`
 
 Use this freshly-read data when writing the delegation context below — not your compressed memory of DEFINE phase.
