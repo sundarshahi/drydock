@@ -28,6 +28,20 @@ All notable changes to **Drydock**.
   original-project references removed. `SECURITY.md` supported-versions table
   aligned to `2.1.x`. `README.md` "Autonomy Levels" section rewritten with clearer
   selection guidance. `VISION.md` updated to the new autonomy-level terminology.
+- **README rewritten for first-time readers** — a plain-language intro, a
+  quick-start with a concrete example, and a clearer pipeline diagram (the three
+  gates shown as explicit approval points, parallel phases marked). `SECURITY.md`
+  scope corrected to the actual executable surface — both hooks (`secret-guard.sh`,
+  `session-guard.sh`) plus the bundled `bootstrap-workspace.sh` / `verify-gate.py`
+  / `aggregate-cost.py` scripts. `CONTRIBUTING.md` CI description updated to the
+  current `claude plugin validate . --strict` + deterministic-evals workflows.
+
+### Changed
+- **`product-manager` is now self-contained** — it no longer invokes the external
+  `superpowers:writing-plans` skill; when an implementation outline is needed it
+  writes a lightweight inline task breakdown (detailed planning is owned downstream
+  by the orchestrator and Solution Architect). Removes a hard dependency on a
+  third-party plugin.
 
 ### Fixed
 - **Case-sensitive-filesystem bug in the workspace directory name.** When the

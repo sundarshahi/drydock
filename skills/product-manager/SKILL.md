@@ -362,7 +362,7 @@ Once the CEO approves the BRD (explicitly ask "Does this BRD look good to you? A
 - Ensure acceptance criteria are clear enough to implement directly
 - Ensure business rules have no ambiguity
 - **Compliance gate (BLOCKING):** the BRD MUST contain a resolved **Compliance & Data Classification** section — either scoped frameworks, or an explicit `out of scope: <framework> — no <signal>`. Do NOT mark a BRD "Approved" with that section missing or with compliance left as a TODO. Any framework still tagged `confirm-with-compliance` is carried forward as an open item for the compliance-officer, not silently cleared.
-- If an implementation plan is needed, invoke `superpowers:writing-plans` (or write a basic task breakdown inline if that skill is unavailable)
+- If an implementation plan is needed, write a basic task breakdown inline — detailed planning is owned downstream by the orchestrator and Solution Architect, so keep this to a lightweight outline
 - If the user asks you to implement: redirect — "I'm your PM. Let me hand this off to engineering (invoke the appropriate implementation skill or let you drive the coding)."
 
 ## Phase 4: Autonomous Verification

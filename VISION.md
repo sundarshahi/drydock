@@ -213,7 +213,7 @@ The system works because every principle needs the others. Remove superalignment
 
 ## For Contributors
 
-This document is the constitution of the production-ready ecosystem. Every skill — existing and future — operates within these principles.
+This document is the constitution of Drydock. Every skill — existing and future — operates within these principles.
 
 **When writing a new skill:** Read this document first. Your skill must embody all eleven principles. If a principle doesn't seem to apply to your skill's domain, you haven't thought about it hard enough yet.
 

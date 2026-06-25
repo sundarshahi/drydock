@@ -1,36 +1,98 @@
-# Drydock — Personal Dev Plugin for Claude Code
+# Drydock
 
-**15 orchestrated skills. 12 execution modes. Idea to production.**
+**From a one-line idea to production-ready software — a team of 15 specialized AI agents, orchestrated inside Claude Code.**
 
-Drydock is a set of orchestrated skills (each shows up as a `drydock:<skill>` invocation) coordinated by a single orchestrator. Throughout these docs "agent" and "skill" refer to the same thing: a specialized worker the orchestrator routes to.
+Drydock turns Claude Code into a full engineering team. You describe what you want in plain English; a single orchestrator routes the work to 15 specialized agents — product, architecture, backend, frontend, QA, security, DevOps, SRE, compliance, and more — that research, build, test, secure, and document a real system. You stay in the strategist's seat and approve at three checkpoints; the agents do the work in between.
 
-## Install (marketplace)
+Each agent shows up as a `drydock:<skill>` skill. (Throughout these docs, "agent" and "skill" mean the same thing: a specialized worker the orchestrator routes to.)
 
-Install Drydock from inside Claude Code using the plugin marketplace flow:
+---
+
+## Quick start
+
+**1. Install** — from inside Claude Code:
 
 ```text
 /plugin marketplace add sundarshahi/drydock
 /plugin install drydock
 ```
 
-This pulls the published plugin and registers its skills, hooks, and shared protocols. No local clone required.
+This registers the skills, hooks, and shared protocols. No local clone required.
 
-**Requirements:** Claude Code, Docker & Docker Compose, Git.
+**2. Use it** — just describe what you want, in plain English:
 
-## Install (dev / local clone)
-
-For local development or to run an unreleased checkout:
-
-```bash
-git clone https://github.com/sundarshahi/drydock ~/.claude/plugins/drydock
-claude --plugin-dir ~/.claude/plugins/drydock
+```text
+Build a SaaS for booking dog walkers — auth, payments, and a dashboard.
 ```
+
+Drydock reads your request, asks you to pick an [autonomy level](#autonomy-levels) (how often it checks in with you), then runs the [pipeline](#how-it-works) — pausing only at the three approval gates. You can also call any agent directly:
+
+```text
+/drydock:security-engineer audit my API for OWASP Top 10
+```
+
+**Requirements:** Claude Code is all you need to install and route. Git, Docker, and Docker Compose are used by the build/ship phases (git-worktree isolation, container builds, IaC) — install them if you plan to run a full build.
+
+> **Local development** (running an unreleased checkout instead of the marketplace build):
+> ```bash
+> git clone https://github.com/sundarshahi/drydock ~/.claude/plugins/drydock
+> claude --plugin-dir ~/.claude/plugins/drydock
+> ```
 
 ---
 
-## Enterprise-grade by default
+## How it works
 
-Every dimension below is **evidence-backed** — Drydock generates real artifacts and enforces blocking gates, not prose recommendations.
+A full build flows through five phases. The agents work autonomously inside each phase; you only weigh in at the three gates (`◆`).
+
+```
+          Your idea, in plain English
+                     │
+                     ▼
+   ┌─ DEFINE ────────────────────────────────────┐
+   │   Product Manager    → requirements (BRD)    │
+   │   Solution Architect → architecture + API    │
+   └──────────────────────────────────────────────┘
+         ◆ GATE 1   you approve the requirements
+         ◆ GATE 2   you approve the architecture
+                     │
+                     ▼
+   ┌─ BUILD   ∥ in parallel ──────────────────────┐
+   │   Backend · Frontend · DevOps ·              │
+   │   QA · Security · Code Review · SRE          │
+   └──────────────────────────────────────────────┘
+                     │
+                     ▼
+   ┌─ HARDEN  ∥ in parallel ──────────────────────┐
+   │   Tests · Security audit · Code review ·     │
+   │   Container build                            │
+   └──────────────────────────────────────────────┘
+                     │
+                     ▼
+   ┌─ SHIP ───────────────────────────────────────┐
+   │   IaC + CI/CD · SRE · Remediation            │
+   └──────────────────────────────────────────────┘
+         ◆ GATE 3   you approve production readiness
+                     │
+                     ▼
+   ┌─ SUSTAIN ────────────────────────────────────┐
+   │   Docs · project-specific skills ·           │
+   │   compound learning                          │
+   └──────────────────────────────────────────────┘
+                     │
+                     ▼
+     A real system: tested, secured, documented, deployable.
+
+   ∥  runs in parallel       ◆  you approve — everything between gates is autonomous
+```
+
+Not every request runs the whole pipeline. Drydock picks a [mode](#execution-modes) to match what you asked for — a code review or a single feature skips straight to the relevant agents, with fewer (or zero) gates.
+
+---
+
+## What you get — enterprise-grade by default
+
+Every dimension below is **evidence-backed**: Drydock generates real artifacts and enforces blocking gates, not prose recommendations.
 
 - **12-Factor** — config from environment, stateless processes, and disposability are scaffolded and checked, not assumed.
 - **Clean Architecture** — the dependency rule is enforced by the `architecture-boundaries` protocol; boundary violations block `production-ready`.
@@ -49,60 +111,32 @@ Errors follow **RFC 9457 `application/problem+json`** by default. `production-re
 
 ---
 
-## The Pipeline
+## Autonomy levels
 
-```
-YOU → "Build a SaaS for ..."
-       │
-       ▼
-┌─────────────────────────────────────┐
-│  DEFINE                             │
-│  Product Manager — BRD              │
-│  Solution Architect — ADRs + API    │
-│  [GATE 1: Requirements]             │
-│  [GATE 2: Architecture]             │
-└─────────────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────────────┐
-│  BUILD + ANALYZE  (Wave A — parallel)│
-│  Backend · Frontend · DevOps        │
-│  QA · Security · Review · SRE       │
-└─────────────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────────────┐
-│  HARDEN  (Wave B — parallel)        │
-│  Tests · Security Audit · Review    │
-│  Container Build                    │
-└─────────────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────────────┐
-│  SHIP                               │
-│  IaC + CI/CD · SRE · Remediation   │
-│  [GATE 3: Production Readiness]     │
-└─────────────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────────────┐
-│  SUSTAIN                            │
-│  Technical Writer · Skill Maker     │
-│  Compound Learning                  │
-└─────────────────────────────────────┘
-```
+You pick one autonomy level at the start of a build; it propagates to all 15 agents and controls **how many decisions get surfaced to you**. Higher autonomy = fewer interruptions. The three pipeline gates always fire — the autonomy level only governs the smaller, agent-level questions *between* the gates.
+
+Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the recommended default.
+
+| Level | Agent questions | Use when |
+|---|---|---|
+| **Autopilot** | None — auto-resolves and reports what it chose | Speed matters; trust the pipeline |
+| **Copilot** *(default)* | 1–2 per skill — only key or irreversible calls | Best balance for most builds |
+| **Checkpoint** | All major decisions surfaced before proceeding | Complex or high-stakes builds |
+| **Manual** | Every decision, reviewed before any code is written | Full control, maximum oversight |
 
 ---
 
-## 12 Execution Modes
+## Execution modes
 
-| Mode | Trigger | Skills |
+Drydock routes your request to one of 12 modes. You don't pick the mode — it's inferred from what you ask for.
+
+| Mode | Say something like | Agents involved |
 |---|---|---|
 | **Full Build** | "build a SaaS", "from scratch" | All 15 |
-| **Feature** | "add [feature]", "implement [feature]" | PM + Arch + Eng + QA |
-| **Harden** | "audit", "secure", "before launch" | Security + QA + Review |
+| **Feature** | "add [feature]", "implement [feature]" | PM + Architect + Engineering + QA |
+| **Harden** | "audit", "secure", "before launch" | Security + QA + Code Review |
 | **Pentest (VAPT)** | "pentest", "vapt", "dast", "owasp api/llm" | Security Engineer (8-phase VAPT, gated) |
-| **Compliance** | "soc2", "gdpr", "hipaa", "pci", "compliance", "audit-ready" | Compliance Officer (controls mapping + gate) |
+| **Compliance** | "soc2", "gdpr", "hipaa", "pci", "audit-ready" | Compliance Officer (controls mapping + gate) |
 | **Ship** | "deploy", "CI/CD", "docker", "terraform" | DevOps + SRE |
 | **Test** | "write tests", "test coverage" | QA |
 | **Review** | "code review", "review my code" | Code Reviewer |
@@ -113,13 +147,13 @@ YOU → "Build a SaaS for ..."
 
 ---
 
-## The 15 Skills
+## The 15 agents
 
-These are orchestrated skills — each is invocable as `drydock:<skill>` and the orchestrator routes to them based on your request.
+Each is invocable as `drydock:<skill>`, and the orchestrator routes to them based on your request.
 
-| # | Skill | Sole Authority |
+| # | Agent | Owns |
 |---|---|---|
-| 1 | Orchestrator | Routes, gates, receipts |
+| 1 | Orchestrator | Routing, gates, receipts |
 | 2 | Polymath | Research, ideation, translation |
 | 3 | Product Manager | Requirements |
 | 4 | Solution Architect | Architecture |
@@ -127,7 +161,7 @@ These are orchestrated skills — each is invocable as `drydock:<skill>` and the
 | 6 | Frontend Engineer | UI/UX |
 | 7 | QA Engineer | Tests |
 | 8 | Security Engineer | Security + VAPT |
-| 9 | Code Reviewer | Code Quality |
+| 9 | Code Reviewer | Code quality |
 | 10 | DevOps | Infrastructure |
 | 11 | SRE | Reliability |
 | 12 | Data Scientist | LLM/ML optimization |
@@ -135,13 +169,11 @@ These are orchestrated skills — each is invocable as `drydock:<skill>` and the
 | 14 | Skill Maker | Project-specific skills |
 | 15 | Compliance Officer | Regulatory compliance |
 
----
+### Invoking an agent directly
 
-## Invocation
+Let the orchestrator route for you, or call any agent by name:
 
-Invoke any skill directly with its `drydock:<skill>` name, or let the orchestrator route for you.
-
-| Invocation | Skill |
+| Invocation | Agent |
 |---|---|
 | `/drydock:drydock` | Orchestrator (routing + gates) |
 | `/drydock:polymath` | Polymath |
@@ -161,35 +193,24 @@ Invoke any skill directly with its `drydock:<skill>` name, or let the orchestrat
 
 ---
 
-## Key Behaviors
+## Key behaviors
 
-- **Receipt enforcement** — every agent writes JSON proof; gates verify before opening
-- **Re-anchoring** — specs re-read from disk at every phase transition (no context drift)
-- **Adversarial review** — code reviewer assumes code is wrong until proven right
-- **Grounding / anti-hallucination** — evidence-first: every claim cites `file:line`, command output, or a retrieved source; `[verified]`/`[inferred]`/`[unverified]` confidence tags; cite-or-abstain; never invents CVEs/CVSS
-- **VAPT authorization gate** — active/DAST testing only against explicitly authorized, local/staging targets; no DoS/destructive payloads; responsible disclosure
-- **Freshness protocol** — agents WebSearch volatile data (model IDs, CVEs) before implementing
-- **Boundary safety** — 6 structural patterns for system boundary bugs
-- **Worktree isolation** — parallel agents each get their own git worktree (zero file conflicts)
+What makes the output trustworthy rather than just plausible:
 
----
-
-## Autonomy Levels
-
-You pick one autonomy level at the start of a build; it propagates to all 15 agents and controls **how many decisions get surfaced to you**. Higher autonomy = fewer interruptions. The three pipeline gates (Requirements, Architecture, Production Readiness) always fire — the autonomy level only governs the smaller, agent-level questions *between* the gates.
-
-Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the recommended default.
-
-| Level | Agent questions | Use when |
-|---|---|---|
-| **Autopilot** | None — auto-resolves and reports what it chose | Speed matters; trust the pipeline |
-| **Copilot** *(default)* | 1–2 per skill — only key or irreversible calls | Best balance for most builds |
-| **Checkpoint** | All major decisions surfaced before proceeding | Complex or high-stakes builds |
-| **Manual** | Every decision, reviewed before any code is written | Full control, maximum oversight |
+- **Receipt enforcement** — every agent writes JSON proof of its work; gates verify the receipts (and the artifacts they claim) before opening.
+- **Re-anchoring** — specs are re-read from disk at every phase transition, so long runs don't drift from the original requirements.
+- **Adversarial review** — the Code Reviewer assumes the code is wrong until proven right.
+- **Grounding / anti-hallucination** — evidence-first: every claim cites `file:line`, command output, or a retrieved source, tagged `[verified]` / `[inferred]` / `[unverified]`; never invents CVEs or CVSS scores.
+- **VAPT authorization gate** — active/DAST testing runs only against explicitly authorized local/staging targets; no DoS or destructive payloads; responsible disclosure.
+- **Freshness protocol** — agents WebSearch volatile data (model IDs, CVEs, versions) before implementing, instead of trusting stale training data.
+- **Boundary safety** — six structural patterns that catch system-boundary bugs.
+- **Worktree isolation** — parallel agents each run in their own git worktree, so concurrent work never clobbers files.
 
 ---
 
-## Workspace Structure (created per project)
+## Workspace structure (created per project)
+
+A run scaffolds a `drydock/` directory in your project to hold pipeline state and per-agent artifacts:
 
 ```
 drydock/
@@ -214,21 +235,23 @@ drydock/
 
 ## Configuration
 
-Copy `skills/_shared/templates/drydock.yaml.tmpl` to `.drydock.yaml` at project root to customize paths, preferences, and feature toggles.
+Configuration is optional — Drydock asks what it needs at runtime. To pin paths, preferences, and feature toggles, copy `skills/_shared/templates/drydock.yaml.tmpl` to `.drydock.yaml` at your project root.
 
 ---
 
-## Partial Execution
+## Partial execution
+
+Run a single phase or skip one — useful for iterating on an existing project:
 
 ```bash
-/drydock just define       # T1 + T2 only
-/drydock just build        # Requires DEFINE output
-/drydock just harden       # Requires BUILD output
+/drydock just define       # requirements + architecture only
+/drydock just build        # requires DEFINE output
+/drydock just harden       # requires BUILD output
 /drydock pentest           # 8-phase VAPT — live DAST + report (gated; authorized targets only)
-/drydock compliance        # Map regulatory controls to artifacts (gated)
-/drydock just ship         # Requires HARDEN output
-/drydock just document     # T11 only
-/drydock skip frontend     # Omit T3b
+/drydock compliance        # map regulatory controls to artifacts (gated)
+/drydock just ship         # requires HARDEN output
+/drydock just document     # documentation only
+/drydock skip frontend     # omit the frontend agent
 ```
 
 ---
