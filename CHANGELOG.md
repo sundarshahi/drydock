@@ -29,7 +29,17 @@ All notable changes to **Drydock**.
   aligned to `2.1.x`. `README.md` "Autonomy Levels" section rewritten with clearer
   selection guidance. `VISION.md` updated to the new autonomy-level terminology.
 
-### Changed
+### Fixed
+- **Case-sensitive-filesystem bug in the workspace directory name.** When the
+  runtime workspace was lowercased to `drydock/`, several path references were
+  left as `Drydock/` — the `session-guard` hook's `SUITE_DIR`, the default
+  workspace and prune-set in `aggregate-cost.py` / `verify-gate.py`, and the
+  deterministic eval fixtures. On a case-insensitive filesystem (macOS) these
+  still resolved, but on a case-sensitive one (Linux/CI) they pointed at a
+  non-existent `Drydock/`, so the session-guard never fired and the helper
+  scripts defaulted to the wrong directory. All workspace path references are now
+  lowercase `drydock/`, matching what `bootstrap-workspace.sh` creates. This also
+  fixes the deterministic eval suite, which was green on macOS but failing in CI.
 - **Progressive-disclosure refactor** — the four oversized `SKILL.md` files were
   slimmed below the 500-line budget by deferring per-phase detail to on-demand
   `phases/` and `reference/` files (loaders + frontmatter stay in `SKILL.md`):

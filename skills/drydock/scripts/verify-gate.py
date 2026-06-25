@@ -20,7 +20,7 @@ passed.
 
 Usage:
   python3 verify-gate.py [WORKSPACE_DIR] [PROJECT_ROOT]
-    WORKSPACE_DIR  default: Drydock
+    WORKSPACE_DIR  default: drydock
     PROJECT_ROOT   default: .   (where tests/coverage artifacts live)
 
 Emits a JSON verdict to stdout. Exit code is always 0 (it reports, it does not
@@ -37,7 +37,7 @@ import xml.etree.ElementTree as ET
 
 COVERAGE_TOLERANCE_PP = 1.0  # percentage-points of slack before coverage is a "mismatch"
 _PRUNE = {"node_modules", ".git", "dist", "build", ".next", "vendor", "__pycache__",
-          ".venv", "venv", "target/classes", "Drydock"}
+          ".venv", "venv", "target/classes", "drydock"}
 _WALK_FILE_CAP = 20000  # safety cap so we never walk an enormous tree forever
 
 
@@ -241,7 +241,7 @@ def verify(workspace, project_root):
 
 
 def main(argv):
-    workspace = argv[1] if len(argv) > 1 else "Drydock"
+    workspace = argv[1] if len(argv) > 1 else "drydock"
     project_root = argv[2] if len(argv) > 2 else "."
     print(json.dumps(verify(workspace, project_root), indent=2))
     return 0

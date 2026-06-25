@@ -3,7 +3,7 @@
 # Detects if the current project was built with Drydock and offers
 # the user a choice: work with the pipeline or without it.
 
-SUITE_DIR="Drydock"
+SUITE_DIR="drydock"
 
 # Only fire if the suite directory exists in the current project
 if [ ! -d "$SUITE_DIR" ]; then
