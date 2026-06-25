@@ -112,11 +112,15 @@ def _derive_tests(project_root):
             root = ET.parse(path).getroot()
         except ET.ParseError:
             continue
-        suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
+        suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
         matched = False
         for s in suites:
             a = s.attrib
             if "tests" not in a:
+                continue
+            # Skip aggregate parents that wrap nested <testsuite> elements:
+            # their counts re-sum the children we also iterate -> double count.
+            if s.find("testsuite") is not None:
                 continue
             matched = True
             total += int(float(a.get("tests", 0)))

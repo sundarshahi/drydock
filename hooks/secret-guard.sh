@@ -8,9 +8,11 @@
 #   (1) HARD-BLOCKS writing/editing/staging/committing secret-bearing paths
 #       (.env, .env.*, *.key, *.pem, credentials.json, *.p12, *.pfx,
 #        id_rsa, *.keystore)
-#   (2) FAST-SCANS the target content / staged diff for known secret
-#       patterns + private-key headers using `gitleaks` when available,
-#       otherwise a built-in grep/regex fallback.
+#   (2) FAST-SCANS the target content (Write/Edit/MultiEdit/NotebookEdit), the
+#       staged diff, AND the contents of files about to be added — including
+#       brand-new untracked files — for known secret patterns + private-key
+#       headers, using `gitleaks` when available, otherwise a built-in
+#       grep/regex fallback.
 #
 # Exit codes (Claude Code PreToolUse convention):
 #   0  -> allow the tool call (nothing matched)
@@ -68,18 +70,24 @@ fallback_get() {
 if [ -n "$PAYLOAD" ]; then
   TOOL_NAME="$(json_get '.tool_name')"
   FILE_PATH="$(json_get '.tool_input.file_path')"
+  # NotebookEdit targets .notebook_path, not .file_path.
+  [ -z "$FILE_PATH" ] && FILE_PATH="$(json_get '.tool_input.notebook_path')"
   COMMAND="$(json_get '.tool_input.command')"
-  # Write uses .content; Edit uses .new_string; MultiEdit packs edits in .edits.
+  # Write uses .content; Edit uses .new_string; MultiEdit packs edits in
+  # .edits[].new_string; NotebookEdit uses .new_source (the cell body).
   CONTENT="$(json_get '.tool_input.content')"
   [ -z "$CONTENT" ] && CONTENT="$(json_get '.tool_input.new_string')"
   [ -z "$CONTENT" ] && CONTENT="$(json_get '[.tool_input.edits[]?.new_string] | join("\n")')"
+  [ -z "$CONTENT" ] && CONTENT="$(json_get '.tool_input.new_source')"
 
   if [ -z "$TOOL_NAME" ]; then TOOL_NAME="$(fallback_get tool_name)"; fi
   if [ -z "$FILE_PATH" ]; then FILE_PATH="$(fallback_get file_path)"; fi
+  [ -z "$FILE_PATH" ] && FILE_PATH="$(fallback_get notebook_path)"
   if [ -z "$COMMAND" ]; then COMMAND="$(fallback_get command long)"; fi
   if [ -z "$CONTENT" ]; then
     CONTENT="$(fallback_get content long)"
     [ -z "$CONTENT" ] && CONTENT="$(fallback_get new_string long)"
+    [ -z "$CONTENT" ] && CONTENT="$(fallback_get new_source long)"
   fi
 fi
 
@@ -154,15 +162,29 @@ if [ "$TOOL_NAME" = "Bash" ] && [ -n "$COMMAND" ]; then
     GIT_STAGING=1
     # Block obvious explicit staging of a secret path on the command line.
     # Tokenize on whitespace and inspect each argument's basename.
+    #
+    # Two guards prevent false positives on commit-message text:
+    #   * `set -f` disables pathname expansion, so a glob that merely appears in
+    #     the command (e.g. a message "ignore *.pem files") is NOT expanded
+    #     against the working tree.
+    #   * `[ -e "$tok" ]` requires the token to be a real existing path before
+    #     treating it as a staged secret — a glob like "*.pem" or a message word
+    #     does not name an existing file, while anything you can actually
+    #     `git add` does. (You cannot stage a path that does not exist, so this
+    #     never weakens detection.)
+    set -f
     for tok in $COMMAND; do
       case "$tok" in
         -*|git|add|commit|stash|push|save) continue ;;
       esac
+      [ -e "$tok" ] || continue
       if is_secret_path "$tok"; then
+        set +f
         block "git command stages/commits a secret-bearing path: $tok
 Command: $COMMAND"
       fi
     done
+    set +f
   fi
 fi
 
@@ -170,8 +192,20 @@ fi
 # (b) CONTENT / STAGED-DIFF SCAN
 # ===========================================================================
 
-# Build a temp file holding the material to scan.
-SCRATCH="$(mktemp 2>/dev/null || echo "/tmp/drydock-secret-$$.txt")"
+# Build a temp file holding the material to scan. Create it privately
+# (umask 077) via a randomized template so we never write through a file or
+# symlink an attacker may have pre-planted at a predictable path.
+umask 077
+SCRATCH="$(mktemp "${TMPDIR:-/tmp}/drydock-secret.XXXXXX" 2>/dev/null || true)"
+if [ -z "$SCRATCH" ] || [ ! -f "$SCRATCH" ]; then
+  # mktemp unavailable: create with noclobber (set -C) so an existing path is
+  # not silently reused/truncated.
+  SCRATCH="${TMPDIR:-/tmp}/drydock-secret-$$-${RANDOM:-0}${RANDOM:-0}.txt"
+  if ! ( set -C; : > "$SCRATCH" ) 2>/dev/null; then
+    echo "drydock secret-guard: cannot create a private temp file; skipping scan" >&2
+    exit 0
+  fi
+fi
 trap 'rm -f "$SCRATCH" 2>/dev/null' EXIT
 : > "$SCRATCH"
 
@@ -183,14 +217,48 @@ if [ -n "$CONTENT" ]; then
   HAVE_MATERIAL=1
 fi
 
-# git add/commit -> scan the staged diff (what is about to enter history).
+# git add/commit -> scan the staged diff (what is about to enter history) PLUS
+# the contents of files this command is about to add. Brand-new untracked files
+# do NOT appear in `git diff` or `git diff --cached` at PreToolUse time (the add
+# has not run yet), so we read their bytes directly.
 if [ "$GIT_STAGING" = "1" ] && command -v git >/dev/null 2>&1; then
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    # For `git add -A/.` the index may not yet reflect the new files, so also
-    # diff against the working tree for the paths mentioned, plus the index.
     git diff --cached --no-color 2>/dev/null >> "$SCRATCH" || true
     git diff --no-color 2>/dev/null >> "$SCRATCH" || true
     HAVE_MATERIAL=1
+
+    # Append up to 1 MB of a file's content (cap keeps huge blobs cheap).
+    scan_file() { [ -n "$1" ] && [ -f "$1" ] && head -c 1048576 "$1" 2>/dev/null >> "$SCRATCH"; }
+
+    # Figure out what the command stages: explicit path args vs. a broad add.
+    _broad=0
+    _named=""
+    set -f
+    for tok in $COMMAND; do
+      case "$tok" in
+        .|-A|--all|-a|--update|-u) _broad=1; continue ;;
+        -*|git|add|commit|stash|push|save) continue ;;
+      esac
+      [ -e "$tok" ] && _named="$_named
+$tok"
+    done
+    set +f
+
+    if [ "$_broad" = "1" ]; then
+      # Whole-tree staging: scan untracked + modified files (capped at 500).
+      _n=0
+      while IFS= read -r _f; do
+        [ -z "$_f" ] && continue
+        scan_file "$_f"
+        _n=$((_n + 1))
+        [ "$_n" -ge 500 ] && break
+      done <<EOF
+$(git status --porcelain 2>/dev/null | sed -e 's/^...//' -e 's/.* -> //')
+EOF
+    fi
+
+    # Always scan explicitly-named files (covers `git add notes.txt`).
+    printf '%s\n' "$_named" | while IFS= read -r _f; do scan_file "$_f"; done
   fi
 fi
 
@@ -202,15 +270,21 @@ fi
 # --- gitleaks fast path (preferred) ---------------------------------------
 if command -v gitleaks >/dev/null 2>&1; then
   # gitleaks detect on a path source is fast and authoritative.
-  if gitleaks detect --no-banner --no-git --source "$SCRATCH" >/dev/null 2>&1; then
-    : # exit 0 from gitleaks == no leaks found
-  else
-    # Non-zero from gitleaks == leak(s) found (or an error; treat as block-worthy).
-    DETAIL="$(gitleaks detect --no-banner --no-git --source "$SCRATCH" 2>&1 | grep -iE 'secret|rule|finding|line' | head -n 8)"
+  GL_OUT="$(gitleaks detect --no-banner --no-git --source "$SCRATCH" 2>&1)"
+  GL_RC=$?
+  if [ "$GL_RC" -eq 0 ]; then
+    exit 0  # gitleaks ran clean: no leaks.
+  fi
+  # A non-zero code means EITHER leaks were found OR gitleaks itself errored
+  # (bad config, version skew, unreadable source). Only BLOCK when the output
+  # looks like real findings; on a runtime error fall through to the built-in
+  # regex fallback so a misconfigured gitleaks doesn't block every tool call.
+  if printf '%s' "$GL_OUT" | grep -qiE 'finding|secret|rule|leak|fingerprint'; then
+    DETAIL="$(printf '%s' "$GL_OUT" | grep -iE 'secret|rule|finding|line|file' | head -n 8)"
     block "gitleaks detected secret-like content in the material about to be written/committed.
 ${DETAIL:-(run gitleaks detect for full output)}"
   fi
-  exit 0
+  echo "drydock secret-guard: gitleaks exited $GL_RC without parseable findings; using built-in regex fallback." >&2
 fi
 
 # --- built-in regex fallback ----------------------------------------------
