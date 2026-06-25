@@ -1,5 +1,6 @@
 {
   "name": "shipyard",
+  "description": "Idea-to-production engineering pipeline for Claude Code. Specialized agents take a product from architecture and API-first contracts through tested implementation, security-by-default, observability, CI/CD, performance budgets, feature flags, and regulatory compliance — all the way to ship.",
   "owner": {
     "name": "sundarshahi",
     "url": "https://github.com/sundarshahi/shipyard"

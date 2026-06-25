@@ -97,10 +97,13 @@ jobs:
           print(f"All {len(targets)} skill/agent frontmatter blocks are valid")
           PY
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: Run claude plugin validate (strict)
-        run: |
-          if ! command -v claude >/dev/null 2>&1; then
-            echo "::error::claude CLI not available — cannot run plugin validate"
-            exit 1
-          fi
-          claude plugin validate . --strict
+        run: claude plugin validate . --strict

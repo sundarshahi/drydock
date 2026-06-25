@@ -20,7 +20,8 @@ Dispatch-port + correctness release. The orchestration is now built entirely on 
 - **Dead config** — deleted the orphaned `skills/shipyard/hooks/activation-rules.json` (referenced a `UserPromptSubmit` hook wired to nothing).
 
 ### CI
-- **Strict validation** — CI now runs `claude plugin validate --strict` and fails the job on error (no more warning swallow), and verifies `skills/*/SKILL.md` + `agents/*.md` frontmatter with a real YAML parse (name present; description present and ≤1024 chars).
+- **Strict validation** — CI installs the Claude Code CLI (`npm install -g @anthropic-ai/claude-code`) and runs `claude plugin validate . --strict`, failing the job on any error or warning (no more warning swallow, and no more hard-fail when the CLI is simply absent on the runner). It also verifies `skills/*/SKILL.md` + `agents/*.md` frontmatter with a real YAML parse (name present; description present and ≤1024 chars).
+- **Marketplace description added** — `.claude-plugin/marketplace.json` now carries a top-level `description`, which `--strict` requires (the previous warning was promoted to an error under strict mode).
 
 ## [2.0.0] — 2026-06-25
 
