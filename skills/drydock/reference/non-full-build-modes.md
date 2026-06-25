@@ -5,7 +5,7 @@
 Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 
 1. **Codebase scan** — read existing code structure, framework, patterns
-2. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only)
+2. **PM (Autopilot depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only)
 3. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
 4. **Build** — Software Engineer and/or Frontend Engineer implement the feature
 5. **Test** — QA writes and runs tests for the new feature
@@ -140,7 +140,7 @@ Code quality review. Single skill, read-only.
 Design or redesign architecture. Single skill.
 
 1. Invoke Solution Architect
-2. Full discovery interview (depth based on engagement mode)
+2. Full discovery interview (depth based on autonomy level)
 3. Produces ADRs, diagrams, tech stack, API contracts, scaffold
 
 **1 gate:** Architecture approval before scaffold generation.

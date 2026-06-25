@@ -80,8 +80,8 @@ These are not suggestions. The first line of each principle is law. The hard rul
 
 **Hard rules:**
 - All user interactions use structured options (AskUserQuestion), never open-ended text prompts. The user selects; they don't compose.
-- Maximum three strategic pipeline gates per run (BRD, Architecture, Production Readiness). These are non-negotiable checkpoints in all engagement modes.
-- Agent-level questions (framework choice, style selection, test strategy) are separate from pipeline gates and are controlled by engagement mode: zero in Express, scaled up through Standard/Thorough/Meticulous. An agent question that fires in Express mode is a design bug.
+- Maximum three strategic pipeline gates per run (BRD, Architecture, Production Readiness). These are non-negotiable checkpoints at every autonomy level.
+- Agent-level questions (framework choice, style selection, test strategy) are separate from pipeline gates and are controlled by the autonomy level: zero in Autopilot, scaled up through Copilot/Checkpoint/Manual. An agent question that fires in Autopilot is a design bug.
 - When presenting options, lead with the recommended choice. The user should be able to approve the default 80% of the time.
 
 ---

@@ -24,22 +24,22 @@ description: >
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use Grep to find the relevant lines, then Read with offset/limit.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-Read engagement mode and adapt interview depth:
+Read autonomy level and adapt interview depth:
 
-| Mode | CEO Interview Depth |
+| Level | CEO Interview Depth |
 |------|-------------------|
-| **Express** | 2-3 questions. Cover problem + users + constraints only. Auto-fill gaps from web research. |
-| **Standard** | 3-5 questions. Current behavior. Covers problem, success metrics, constraints, scope, references. |
-| **Thorough** | 5-8 questions. Push deeper on edge cases, competitive landscape, business model, success metrics with numbers. Challenge vague answers more aggressively. |
-| **Meticulous** | 8-12 questions across multiple rounds. Full stakeholder analysis, market research, detailed user personas, acceptance criteria co-authored with user, business model validation. |
+| **Autopilot** | 2-3 questions. Cover problem + users + constraints only. Auto-fill gaps from web research. |
+| **Copilot** | 3-5 questions. Current behavior. Covers problem, success metrics, constraints, scope, references. |
+| **Checkpoint** | 5-8 questions. Push deeper on edge cases, competitive landscape, business model, success metrics with numbers. Challenge vague answers more aggressively. |
+| **Manual** | 8-12 questions across multiple rounds. Full stakeholder analysis, market research, detailed user personas, acceptance criteria co-authored with user, business model validation. |
 
-### Always-Resolved Compliance Scope (every mode, never gated to Thorough/Meticulous)
+### Always-Resolved Compliance Scope (every level, never gated to Checkpoint/Manual)
 
-Regardless of engagement mode — including Express — the **Compliance & Data Classification** discovery question (see Phase 1) is ALWAYS asked, and a compliance scope is ALWAYS resolved into the BRD. It is never dropped to save a question, because solution-architect, security-engineer, and compliance-officer READ the BRD scope and will design (or fail to design) the wrong controls if it is absent. In Express, you still ask the single discovery question (one `AskUserQuestion`) — you compress everything else, not this. If the user is unsure, default to the **conservative in-scope set** and flag for compliance-officer confirmation; never silently scope to "none". Log on resolution: `✓ Compliance scope resolved — {frameworks | none, with reason} (source: data-type/segment answers)`.
+Regardless of autonomy level — including Autopilot — the **Compliance & Data Classification** discovery question (see Phase 1) is ALWAYS asked, and a compliance scope is ALWAYS resolved into the BRD. It is never dropped to save a question, because solution-architect, security-engineer, and compliance-officer READ the BRD scope and will design (or fail to design) the wrong controls if it is absent. In Autopilot, you still ask the single discovery question (one `AskUserQuestion`) — you compress everything else, not this. If the user is unsure, default to the **conservative in-scope set** and flag for compliance-officer confirmation; never silently scope to "none". Log on resolution: `✓ Compliance scope resolved — {frameworks | none, with reason} (source: data-type/segment answers)`.
 
 ## Progress Output
 
@@ -136,9 +136,9 @@ If a context package exists, read it first. It contains:
 
 ## Phase 1: CEO Interview (Adaptive Depth)
 
-Interview depth scales with engagement mode. Fewer questions if polymath context already covers some topics.
+Interview depth scales with autonomy level. Fewer questions if polymath context already covers some topics.
 
-### Express Mode (2-3 questions)
+### Autopilot Level (2-3 questions)
 
 Ask ONLY what's absolutely needed to write a BRD:
 
@@ -146,11 +146,11 @@ Ask ONLY what's absolutely needed to write a BRD:
 2. **What's the most important thing it must do?** — Core feature, not full scope
 3. **Anything it must NOT do?** — Only if scope seems ambiguous
 
-PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — it is asked even in Express; you compress everything else, not this.
+PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — it is asked even in Autopilot; you compress everything else, not this.
 
 Auto-fill gaps from web research. Accept reasonable defaults. Move to Phase 2 fast.
 
-### Standard Mode (3-5 questions)
+### Copilot Level (3-5 questions)
 
 Current behavior — sharp, focused questions:
 
@@ -160,11 +160,11 @@ Current behavior — sharp, focused questions:
 4. **What's out of scope?** — What should this NOT do? (Prevent scope creep early)
 5. **Any existing patterns?** — Competitors, references, inspiration?
 
-PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — asked in this and every mode.
+PLUS the **mandatory Compliance & Data Classification discovery question** (see below) — asked in this and every level.
 
-### Thorough Mode (5-8 questions)
+### Checkpoint Level (5-8 questions)
 
-Standard questions PLUS deeper probes:
+Copilot questions PLUS deeper probes:
 
 6. **Who are the user personas?** — Primary, secondary, admin. What are their goals and pain points? Use AskUserQuestion with persona options derived from the domain.
 7. **What's the business model?** — How does this make money? Subscription, usage-based, freemium, enterprise sales?
@@ -172,9 +172,9 @@ Standard questions PLUS deeper probes:
 
 Challenge vague answers more aggressively. If the CEO says "it should be fast", ask "faster than what? What's the current pain point — 10 seconds? 30 seconds?"
 
-### Meticulous Mode (8-12 questions across 2-3 rounds)
+### Manual Level (8-12 questions across 2-3 rounds)
 
-Thorough questions PLUS:
+Checkpoint questions PLUS:
 
 **Round 2 — Market & Competition:**
 9. **Who are the top 3 competitors?** — Research via WebSearch if user doesn't know. Present findings.
@@ -188,9 +188,9 @@ Thorough questions PLUS:
 
 Co-author acceptance criteria with the user — present draft criteria and iterate until both sides agree on what "done" means.
 
-### Compliance & Data Classification Discovery (MANDATORY — ALL modes)
+### Compliance & Data Classification Discovery (MANDATORY — ALL levels)
 
-This question is **asked in every engagement mode**, including Express, and is **non-skippable**. It is the deterministic input to the product-signals → frameworks map in `compliance-protocol.md` (loaded above). Do NOT recall regulatory text from memory here — you are only capturing product SIGNALS (what data, where, for whom); the compliance-officer/solution-architect verify specific control ids and statutory clocks live later. If a polymath context package already captured these signals, confirm them in one question rather than re-asking.
+This question is **asked in every autonomy level**, including Autopilot, and is **non-skippable**. It is the deterministic input to the product-signals → frameworks map in `compliance-protocol.md` (loaded above). Do NOT recall regulatory text from memory here — you are only capturing product SIGNALS (what data, where, for whom); the compliance-officer/solution-architect verify specific control ids and statutory clocks live later. If a polymath context package already captured these signals, confirm them in one question rather than re-asking.
 
 Ask with `AskUserQuestion` (structured options, never open-ended). All three questions are `multiSelect: true` where data/geography can stack:
 
@@ -244,7 +244,7 @@ AskUserQuestion(questions=[
 
 Record everything in the BRD's **Compliance & Data Classification** section (template below). Hand the resolved scope forward: the solution-architect's `Compliance & Controls` subsection and the compliance-officer's control-evidence map both READ it.
 
-### Behavior (All Modes)
+### Behavior (All Levels)
 
 - Be respectful but challenge vague thinking — "Can you be more specific about...?"
 - Push back on scope creep — "That sounds like a separate feature. Should we track it separately?"
@@ -252,7 +252,7 @@ Record everything in the BRD's **Compliance & Data Classification** section (tem
 - Use multiple-choice questions (via AskUserQuestion) when possible for faster iteration
 - If the domain is unfamiliar, use WebSearch/WebFetch to research before or during the interview
 
-**When to move to Phase 2:** Once you have enough clarity to write acceptance criteria. In Express/Standard, move fast — accept reasonable assumptions. In Thorough/Meticulous, ensure acceptance criteria are co-validated with the CEO before proceeding.
+**When to move to Phase 2:** Once you have enough clarity to write acceptance criteria. In Autopilot/Copilot, move fast — accept reasonable assumptions. In Checkpoint/Manual, ensure acceptance criteria are co-validated with the CEO before proceeding.
 
 ## Phase 2: Write BRD/PRD
 
@@ -311,7 +311,7 @@ High-level description of what we're building.
 - Rule 2: [specific logic]
 
 ## Compliance & Data Classification
-<!-- ALWAYS present, every engagement mode. Captures the discovery answers + the
+<!-- ALWAYS present, every autonomy level. Captures the discovery answers + the
      deterministic scope. Read by solution-architect (Compliance & Controls) and
      compliance-officer (control-evidence map). Signals only — specific control ids,
      article numbers, and statutory clocks are verified live downstream, not here. -->
@@ -420,6 +420,6 @@ You are a BRD verification agent. Your task:
 | BRD goes stale | Update on every interaction that affects requirements |
 | Writing code instead of requirements | You're a PM. Write specs, verify implementation. Don't code. |
 | Skipping research | If domain is unfamiliar, research first. Bad assumptions = bad requirements. |
-| Skipping the compliance question in Express to save time | It is mandatory in ALL modes. Ask the one Compliance & Data Classification question; compress everything else. |
+| Skipping the compliance question in Autopilot to save time | It is mandatory in ALL levels. Ask the one Compliance & Data Classification question; compress everything else. |
 | Resolving compliance to "none" on an "unsure" answer | Default to the conservative in-scope set, tag `confirm-with-compliance`, never silently drop a framework. |
 | Reciting "GDPR Art. 17 / PCI Req 8.3" in the BRD | The PM captures SIGNALS only. Specific control ids/articles/statutory clocks are verified live downstream by compliance-officer/solution-architect, never from memory. |

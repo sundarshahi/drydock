@@ -126,7 +126,7 @@ Before moving to Phase 2:
 - Every suite directory has been read and catalogued
 - Gap analysis covers all rows in the documentation matrix
 - README assessment is recorded with specific issues
-- Documentation plan is prioritized and resolved (approved by user in Standard+, auto-approved in Express)
+- Documentation plan is prioritized and resolved (approved by user in Copilot+, auto-approved in Autopilot)
 - No source artifact has been overlooked
 
 ## Quality Bar

@@ -118,7 +118,7 @@ Before moving to Phase 5:
 - Migration runner can run up/down/status
 - All integration tests pass
 
-**Integration review (mode-aware):** Express — proceed immediately, report metrics. Standard — present brief summary. Thorough/Meticulous — present integration patterns for detailed review via AskUserQuestion.
+**Integration review (autonomy-level-aware):** Autopilot — proceed immediately, report metrics. Copilot — present brief summary. Checkpoint/Manual — present integration patterns for detailed review via AskUserQuestion.
 
 ## Quality Bar
 

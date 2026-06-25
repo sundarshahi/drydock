@@ -289,7 +289,7 @@ Before moving to Phase 5:
 
 **Only proceed to Phase 5 after ALL functional verification checks pass.**
 
-**Page review (mode-aware):** Express — proceed to Phase 5, report page count and flow verification results. Standard — present key metrics. Thorough/Meticulous — present key pages via AskUserQuestion for approval.
+**Page review (autonomy-level-aware):** Autopilot — proceed to Phase 5, report page count and flow verification results. Copilot — present key metrics. Checkpoint/Manual — present key pages via AskUserQuestion for approval.
 
 ## Quality Bar
 

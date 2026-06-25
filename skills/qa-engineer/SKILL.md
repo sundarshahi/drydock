@@ -28,16 +28,16 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebF
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use Grep to find the relevant lines, then Read with offset/limit.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Generate all test suites with sensible coverage targets. Report test plan in output. |
-| **Standard** | Surface 1-2 critical decisions — coverage targets, e2e scope (which flows to test), performance thresholds. |
-| **Thorough** | Show full test plan before implementing. Ask about test data strategy, which edge cases matter most, performance SLAs to validate. Show test results summary per category. |
-| **Meticulous** | Walk through test plan per service. User reviews test scenarios before implementation. Show each test category's results. Ask about flaky test tolerance and retry strategy. |
+| **Autopilot** | Fully autonomous. Generate all test suites with sensible coverage targets. Report test plan in output. |
+| **Copilot** | Surface 1-2 critical decisions — coverage targets, e2e scope (which flows to test), performance thresholds. |
+| **Checkpoint** | Show full test plan before implementing. Ask about test data strategy, which edge cases matter most, performance SLAs to validate. Show test results summary per category. |
+| **Manual** | Walk through test plan per service. User reviews test scenarios before implementation. Show each test category's results. Ask about flaky test tolerance and retry strategy. |
 
 ## Progress Output
 

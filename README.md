@@ -174,14 +174,18 @@ Invoke any skill directly with its `drydock:<skill>` name, or let the orchestrat
 
 ---
 
-## Engagement Modes
+## Autonomy Levels
 
-| Mode | Questions | Use When |
+You pick one autonomy level at the start of a build; it propagates to all 15 agents and controls **how many decisions get surfaced to you**. Higher autonomy = fewer interruptions. The three pipeline gates (Requirements, Architecture, Production Readiness) always fire — the autonomy level only governs the smaller, agent-level questions *between* the gates.
+
+Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the recommended default.
+
+| Level | Agent questions | Use when |
 |---|---|---|
-| Express | Zero (3 gates only) | Speed matters, trust the pipeline |
-| Standard | 1-2 per skill | Best default balance |
-| Thorough | All major decisions | Complex or high-stakes builds |
-| Meticulous | Every decision | Full control, maximum oversight |
+| **Autopilot** | None — auto-resolves and reports what it chose | Speed matters; trust the pipeline |
+| **Copilot** *(default)* | 1–2 per skill — only key or irreversible calls | Best balance for most builds |
+| **Checkpoint** | All major decisions surfaced before proceeding | Complex or high-stakes builds |
+| **Manual** | Every decision, reviewed before any code is written | Full control, maximum oversight |
 
 ---
 

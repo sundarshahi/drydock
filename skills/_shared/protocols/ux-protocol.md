@@ -46,25 +46,25 @@ Key rules from visual identity:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## RULE 6: Autonomy Scales with Engagement Mode
+## RULE 6: Autonomy Scales with Autonomy Level
 
-Read engagement mode from `drydock/.orchestrator/settings.md`. Autonomy scales inversely with engagement level:
+Read autonomy level from `drydock/.orchestrator/settings.md`. Autonomy scales inversely with engagement:
 
-| Mode | AskUserQuestion Behavior | Default Posture |
+| Level | AskUserQuestion Behavior | Default Posture |
 |------|-------------------------|-----------------|
-| **Express** | Zero agent questions. Auto-resolve everything — framework, style, strategy, architecture patterns. Report decisions in output with reasoning. Pipeline gates still fire. | Maximum autonomy. If in doubt, pick the best option and move. |
-| **Standard** | 1-2 questions per skill, only for subjective/irreversible choices (visual style, framework when multiple are viable). Auto-resolve everything else. | Lean autonomous. Only ask when the "right answer" genuinely depends on user preference. |
-| **Thorough** | Surface all major decisions. Show previews before implementing (design system preview, routing plan, test strategy). | Collaborative. The user is engaged and wants visibility. |
-| **Meticulous** | Surface every decision point. User reviews component APIs, design tokens, page layouts before implementation begins. | Full partnership. The user wants to approve each step. |
+| **Autopilot** | Zero agent questions. Auto-resolve everything — framework, style, strategy, architecture patterns. Report decisions in output with reasoning. Pipeline gates still fire. | Maximum autonomy. If in doubt, pick the best option and move. |
+| **Copilot** | 1-2 questions per skill, only for subjective/irreversible choices (visual style, framework when multiple are viable). Auto-resolve everything else. | Lean autonomous. Only ask when the "right answer" genuinely depends on user preference. |
+| **Checkpoint** | Surface all major decisions. Show previews before implementing (design system preview, routing plan, test strategy). | Collaborative. The user is engaged and wants visibility. |
+| **Manual** | Surface every decision point. User reviews component APIs, design tokens, page layouts before implementation begins. | Full partnership. The user wants to approve each step. |
 
-**The test for whether to ask:** In Express mode, would a senior engineer auto-resolve this? If yes, auto-resolve it in Express. Each higher mode widens the circle of what gets surfaced.
+**The test for whether to ask:** In Autopilot mode, would a senior engineer auto-resolve this? If yes, auto-resolve it in Autopilot. Each higher level widens the circle of what gets surfaced.
 
-**What is NEVER mode-dependent:**
+**What is NEVER level-dependent:**
 - Pipeline gates (always 3, always fire)
 - Error escalation after 3 failed self-repair attempts
 - Genuine blockers (missing critical inputs, ambiguous requirements with no reasonable default)
 
-**What is ALWAYS mode-dependent:**
+**What is ALWAYS level-dependent:**
 - Framework/library selection
 - Visual design choices (style, color, typography)
 - Architecture pattern selection (when multiple are viable)

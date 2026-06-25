@@ -8,8 +8,8 @@ The latest released version on `main` receives security fixes. Older versions ar
 
 | Version | Supported |
 |---|---|
-| 6.0.x   | Yes |
-| < 6.0   | No  |
+| 2.1.x   | Yes |
+| < 2.1   | No  |
 
 ## Reporting a vulnerability
 

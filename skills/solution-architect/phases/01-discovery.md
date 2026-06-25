@@ -1,6 +1,6 @@
 # Phase 1 — Discovery & Scale Assessment
 
-The architecture must fit the project's actual constraints. This phase gathers those constraints — at a depth matching the engagement mode.
+The architecture must fit the project's actual constraints. This phase gathers those constraints — at a depth matching the autonomy level.
 
 ## Step 1: Read Existing Context
 
@@ -13,19 +13,19 @@ Before asking ANY questions, read in parallel:
 
 ## Step 2: Scale & Fitness Interview
 
-Adapt depth to engagement mode. Use AskUserQuestion with structured options (never open-ended).
+Adapt depth to autonomy level. Use AskUserQuestion with structured options (never open-ended).
 
-### Express Mode
+### Autopilot Level
 
 Skip interview entirely. Auto-derive from BRD signals:
 - User count hints from user stories -> default to "small" (< 1K users) if no signals
 - Tech mentions in BRD or polymath context -> use those, else conservative defaults
 - Default: modular monolith, managed services, single region, single DB
-- Log: `✓ Express mode — auto-deriving architecture from BRD`
+- Log: `✓ Autopilot level — auto-deriving architecture from BRD`
 
 If a critical constraint is completely missing (e.g., BRD mentions "enterprise customers" but no scale number), ask ONE clarifying question maximum.
 
-### Standard Mode (2 rounds)
+### Copilot Level (2 rounds)
 
 **Round 1 — Scale & Users:**
 
@@ -98,9 +98,9 @@ AskUserQuestion(questions=[{
 }])
 ```
 
-### Thorough Mode (4 rounds)
+### Checkpoint Level (4 rounds)
 
-Everything in Standard, PLUS two additional rounds:
+Everything in Copilot, PLUS two additional rounds:
 
 **Round 3 — Technical Requirements:**
 
@@ -198,9 +198,9 @@ AskUserQuestion(questions=[{
 }])
 ```
 
-### Meticulous Mode
+### Manual Level
 
-Everything in Thorough, PLUS:
+Everything in Checkpoint, PLUS:
 - After the fitness function produces an architecture, present **2-3 alternative architectures** with explicit trade-off tables (cost vs complexity vs scalability vs team fit) before the user chooses
 - **Individual ADR approval**: present each ADR separately. User reviews and approves each decision.
 - **Capacity modeling**: estimate infrastructure cost at current scale AND 10x projected scale
@@ -269,7 +269,7 @@ After gathering inputs, DERIVE the architecture from constraints. The architectu
 
 **Present the derived architecture:** "Based on your constraints [summary], here's what fits and why..."
 
-For **Thorough/Meticulous** modes, also present 1-2 alternative architectures:
+For **Checkpoint/Manual** levels, also present 1-2 alternative architectures:
 - **Conservative alternative**: simpler, faster to build, may need rework at scale
 - **Ambitious alternative**: handles more future growth, higher upfront complexity and cost
 

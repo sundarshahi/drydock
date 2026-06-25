@@ -12,6 +12,22 @@ All notable changes to **Drydock**.
   project config file (`.drydock.yaml`). The GitHub repository itself stays at
   `sundarshahi/drydock`. Verified by the eval suite, `validate --strict`, and a
   live routing smoke test (`route='drydock:drydock'`, zero plugin errors).
+- **Engagement modes renamed to "Autonomy Levels"** — the four levels
+  `Express / Standard / Thorough / Meticulous` are now
+  `Autopilot / Copilot / Checkpoint / Manual`, and the concept "engagement mode"
+  is now "autonomy level" (how many decisions the pipeline surfaces to the user).
+  Applied consistently across all 15 agents and the shared protocols; the default
+  is **Copilot**. Naming only — the behavioral spectrum (Autopilot = fully
+  autonomous → Manual = reviews every decision) is unchanged.
+
+### Docs
+- **Documentation hardened for the marketplace submission.** `DEV_PROTOCOL.md`
+  corrected: agent/protocol counts fixed (15 agents, 14 shared protocols), version
+  examples aligned to the `2.x` line, the competitive-analysis tables rewritten as
+  capability-focused language (no named third-party products), and stale
+  original-project references removed. `SECURITY.md` supported-versions table
+  aligned to `2.1.x`. `README.md` "Autonomy Levels" section rewritten with clearer
+  selection guidance. `VISION.md` updated to the new autonomy-level terminology.
 
 ### Changed
 - **Progressive-disclosure refactor** — the four oversized `SKILL.md` files were

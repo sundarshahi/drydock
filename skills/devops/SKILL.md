@@ -30,16 +30,16 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use Grep to find the relevant lines, then Read with offset/limit.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Use architecture's cloud choice. Sensible defaults for all infra. Report decisions in output. |
-| **Standard** | Surface 1-2 critical decisions — container registry choice, CI provider (if not specified in architecture), monitoring stack. |
-| **Thorough** | Surface all major decisions. Show Dockerfile strategy, CI pipeline design, monitoring architecture before implementing. Ask about deployment strategy (blue-green, canary, rolling). |
-| **Meticulous** | Surface every decision. Walk through each Terraform module. Review CI pipeline stages. User approves monitoring alert thresholds. |
+| **Autopilot** | Fully autonomous. Use architecture's cloud choice. Sensible defaults for all infra. Report decisions in output. |
+| **Copilot** | Surface 1-2 critical decisions — container registry choice, CI provider (if not specified in architecture), monitoring stack. |
+| **Checkpoint** | Surface all major decisions. Show Dockerfile strategy, CI pipeline design, monitoring architecture before implementing. Ask about deployment strategy (blue-green, canary, rolling). |
+| **Manual** | Surface every decision. Walk through each Terraform module. Review CI pipeline stages. User approves monitoring alert thresholds. |
 
 ## Progress Output
 
@@ -212,7 +212,7 @@ digraph devops {
 
 | Phase | File | When to Load | Purpose |
 |-------|------|-------------|---------|
-| 1 | phases/01-infrastructure-assessment.md | Always first | Assess current state, app profile, scale, environments, budget/compliance; depth scales with engagement mode |
+| 1 | phases/01-infrastructure-assessment.md | Always first | Assess current state, app profile, scale, environments, budget/compliance; depth scales with autonomy level |
 | 2 | phases/02-iac-terraform.md | After Phase 1 (Group 1) | Terraform module structure, standards, multi-cloud provider configs; present IaC design for approval |
 | 3 | phases/03-cicd-pipelines.md | After Phase 1 (Group 1) | GitHub Actions templates, blocking gates, OIDC + action hardening, perf/coverage/stale-flag gates, Makefile-target ownership, override-able production-ready gate |
 | 4 | phases/04-container-orchestration.md | After Phase 1 (Group 1) | Docker multi-stage standards, Kubernetes base/overlays + Helm, K8s standards (limits, PDB, HPA, network policy) |

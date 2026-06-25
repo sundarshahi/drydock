@@ -144,7 +144,7 @@ All modes share these behaviors:
 - Bootstrap workspace + protocols: run `bash "${CLAUDE_PLUGIN_ROOT}/skills/drydock/scripts/bootstrap-workspace.sh"` (fallback `"${CLAUDE_SKILL_DIR}/scripts/bootstrap-workspace.sh"`) — it creates the workspace dirs and deploys all shared protocols to `drydock/.protocols/`. Same script as Full Build step 2 (see `phases/full-build-setup.md`).
 - Read `.drydock.yaml` for path overrides
 - Read existing workspace state if present
-- Engagement mode + parallelism: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution (overhead of asking isn't worth it).
+- Autonomy level + parallelism: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Copilot autonomy + Sequential execution (overhead of asking isn't worth it).
 - **Cleanup:** After mode completion (or gate rejection), no team teardown is required. Delegated subagents finish on their own and their worktrees auto-clean; just merge back any worktree branches a wave produced (see phase dispatchers) before reading their outputs.
 
 ### Non-Full-Build Visual Output
@@ -425,8 +425,8 @@ There is no `TeamDelete` step — TeamCreate/TeamDelete no longer exist, and sub
 | Skipping tests | Production ready means tested |
 | Not running code after writing | Every agent verifies output compiles and runs |
 | Agents working in isolation | Cross-reference via Context Bridging table |
-| Over-asking the user | Respect engagement mode. Express: 3 gates only. Standard: 3 gates + moderate interview. Thorough/Meticulous: deeper interviews but always structured options. |
-| Ignoring engagement mode | ALL skills must read settings.md and adapt depth. Express architect doesn't ask 15 questions. Meticulous PM doesn't skip to BRD after 2 questions. |
+| Over-asking the user | Respect autonomy level. Autopilot: 3 gates only. Copilot: 3 gates + moderate interview. Checkpoint/Manual: deeper interviews but always structured options. |
+| Ignoring autonomy level | ALL skills must read settings.md and adapt depth. Autopilot architect doesn't ask 15 questions. Manual PM doesn't skip to BRD after 2 questions. |
 | One-size-fits-all architecture | Architecture is derived from constraints (scale, team, budget, compliance). A 100-user internal tool does NOT need microservices + K8s. |
 | Writing stubs | No `// TODO: implement` in production code |
 | Hardcoded paths | Read `.drydock.yaml` for path overrides |

@@ -286,9 +286,9 @@ Show estimated effort in the final summary. Aggregate `effort` fields from all r
 
 ### Cost Estimation Table (used by orchestrator)
 
-Estimate tokens from mode × engagement × project complexity:
+Estimate tokens from mode × autonomy level × project complexity:
 
-| Mode | Express | Standard | Thorough | Meticulous |
+| Mode | Autopilot | Copilot | Checkpoint | Manual |
 |------|---------|----------|----------|------------|
 | Full Build | 150-300K | 300-500K | 500-800K | 800K-1.2M |
 | Feature | 30-80K | 50-150K | 100-250K | 200-400K |
@@ -298,7 +298,7 @@ Estimate tokens from mode × engagement × project complexity:
 | Review | 10-30K | 20-50K | 40-100K | 80-200K |
 | Architect | 20-50K | 40-100K | 80-200K | 150-350K |
 
-Show the pre-pipeline estimate after engagement mode selection:
+Show the pre-pipeline estimate after autonomy level selection:
 ```
   Est. cost: ~300-500K tokens ($0.90-$2.50 at Sonnet pricing)
   Agents: up to 7 concurrent · 13 total tasks
