@@ -2,6 +2,23 @@
 
 All notable changes to **Drydock**.
 
+## [2.5.0] — 2026-06-25
+
+Extends the team past engineering into the full product cycle. Drydock shipped production-ready *software* well; it now also designs the UX and takes the product to market. Four new agents bring the roster from **15 to 19** and add a new **LAUNCH** phase after SHIP.
+
+### Added
+- **UX Designer** (`ux-designer`, DEFINE→BUILD) — the one missing *engineering-adjacent* role. Owns user research, information architecture, interaction design, and the **design-system SPECIFICATION** (tokens, type scale, WCAG-AA color, component specs, states, motion) that frontend-engineer implements. Phases: discovery → IA → design-system spec → interaction design → usability/accessibility.
+- **Growth Marketer** (`growth-marketer`, LAUNCH) — positioning, messaging, GTM/launch plan, marketing-site copy + SEO briefs, funnels/analytics, and growth experiments. Phases: positioning → launch plan → website & content → funnels & analytics → growth metrics.
+- **Sales Strategist** (`sales-strategist`, LAUNCH) — pricing & packaging, sales collateral, sales process/qualification, enablement, and proposals. Turns the **security-engineer + compliance-officer evidence into a buyer-facing trust pack**. Phases: pricing & packaging → collateral → process → enablement & trust → proposals (legal artifacts flagged "requires legal review").
+- **Customer Success** (`customer-success`, LAUNCH→SUSTAIN) — onboarding/activation, support operations, retention/churn, and the voice-of-customer loop back to product-manager. Phases: onboarding → support ops → retention/churn → voice-of-customer.
+- **New LAUNCH phase** (`skills/drydock/phases/launch.md`) — runs after SHIP/Gate 3, dispatching the three GTM agents in parallel; customer-success carries into SUSTAIN. Full pipeline is now DEFINE→BUILD→HARDEN→SHIP→**LAUNCH**→SUSTAIN.
+- **Two new modes** — **Design (UX)** (single-skill, routes to ux-designer) and **Launch (GTM)** (multi-skill, GTM-plan gate), plus `/drydock design` and `/drydock just launch` partial-execution commands. 12 → 14 modes.
+
+### Changed
+- Orchestrator wired for all four: request-classification + gate tables, phase-execution table, internal-parallelism, dispatch list, context-bridging, workspace dirs, and partial-execution. Counts updated everywhere (15→19 agents, 12→14 modes) across `drydock/SKILL.md`, `plugin.json`, `marketplace.json`, and `README.md` (including the pipeline diagram, the agent roster, and the direct-invocation table).
+- `conflict-resolution.md` gains four authority rows + boundary clarifications enforcing non-overlap: ux-designer owns the design *spec* (frontend implements it), growth-marketer owns positioning (sales consumes it), customer-success routes feedback to PM (doesn't change requirements).
+- Structural evals updated to the new ground truth (15 agents / 19 skills). All 19 worker/main-context skills stay within the 500-line progressive-disclosure budget; **11/11 deterministic evals pass**.
+
 ## [2.4.0] — 2026-06-25
 
 Frontend production-grade upgrade. The `frontend-engineer` skill was already strong (atomic components, WCAG 2.1 AA, React Query, OpenAPI-typed clients, RFC 9457 errors, frontend observability, perf budgets, feature flags); this closes the remaining gaps to production-grade and makes the **framework choice product-driven** instead of a blanket Next.js default.

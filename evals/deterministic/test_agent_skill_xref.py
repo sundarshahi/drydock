@@ -33,7 +33,7 @@ SKILLS_DIR = ROOT / "skills"
 # The skills that intentionally run in the main context and therefore have
 # NO agents/<name>.md dispatcher.
 MAIN_CONTEXT_SKILLS = {"drydock", "product-manager", "solution-architect", "polymath"}
-EXPECTED_AGENT_COUNT = 11
+EXPECTED_AGENT_COUNT = 15
 
 
 def _parse_frontmatter(text: str) -> dict | None:

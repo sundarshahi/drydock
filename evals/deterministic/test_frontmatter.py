@@ -73,12 +73,12 @@ def run() -> list[str]:
 
     # Sanity-check the corpus matches the documented ground truth so this test
     # fails if files are added/removed without updating expectations.
-    if len(agent_files) != 11:
-        failures.append(f"expected 11 agents/*.md, found {len(agent_files)}")
+    if len(agent_files) != 15:
+        failures.append(f"expected 15 agents/*.md, found {len(agent_files)}")
     skill_dirs = [p.parent.name for p in skill_files if p.parent.name != "_shared"]
-    if len(skill_dirs) != 15:
+    if len(skill_dirs) != 19:
         failures.append(
-            f"expected 15 skills/*/SKILL.md (excl _shared), found {len(skill_dirs)}"
+            f"expected 19 skills/*/SKILL.md (excl _shared), found {len(skill_dirs)}"
         )
 
     # WORKER set derived from disk: an agent filename == a worker skill name.
