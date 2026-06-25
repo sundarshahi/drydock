@@ -141,8 +141,7 @@ For non-Full-Build modes, use the lightweight execution flows below. For Full Bu
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:
-- Bootstrap workspace: `mkdir -p Shipyard/.protocols/ Shipyard/.orchestrator/`
-- Write shared protocols (same as Full Build step 3, including `visual-identity.md`, `freshness-protocol.md`, `receipt-protocol.md`, `boundary-safety.md`, `grounding-protocol.md`, `security-testing-protocol.md`, `security-defaults.md`, `observability-contract.md`, `architecture-boundaries.md`, and `compliance-protocol.md`)
+- Bootstrap workspace + protocols: run `bash "${CLAUDE_PLUGIN_ROOT}/skills/shipyard/scripts/bootstrap-workspace.sh"` (fallback `"${CLAUDE_SKILL_DIR}/scripts/bootstrap-workspace.sh"`) — it creates the workspace dirs and deploys all shared protocols to `Shipyard/.protocols/`. Same script as Full Build step 2 (see `phases/full-build-setup.md`).
 - Read `.shipyard.yaml` for path overrides
 - Read existing workspace state if present
 - Engagement mode + parallelism: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution (overhead of asking isn't worth it).

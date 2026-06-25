@@ -42,11 +42,12 @@
 
 **Cost aggregation for final summary:**
 
-Read ALL receipts from `Shipyard/.orchestrator/receipts/`. For each receipt, extract the `effort` field (files_read, files_written, tool_calls). Sum across all agents to produce:
-- Total agents used (count of unique receipt files)
-- Total tool calls (sum of all effort.tool_calls)
-- Total files processed (sum of all effort.files_read + effort.files_written, deduplicated)
-- Estimated tokens: use the cost estimation table from visual-identity protocol, adjusted by actual effort metrics. If actual tool_calls significantly exceed the estimate range, scale up proportionally.
+Run the bundled aggregation script and render its JSON into the box above (deterministic — don't re-sum receipts from memory):
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/shipyard/scripts/aggregate-cost.py" 2>/dev/null \
+  || python3 "${CLAUDE_SKILL_DIR}/scripts/aggregate-cost.py"
+```
+It reads every receipt in `Shipyard/.orchestrator/receipts/` plus `Shipyard/.orchestrator/rework-log.md` and emits `{agents, tool_calls, files_read, files_written, files_total, unique_artifacts, rework_cycles}` (malformed receipts skipped, artifacts deduplicated). Use those numbers directly for Agents / total tool calls / files / rework cycles.
 
-Read `Shipyard/.orchestrator/rework-log.md` to get total rework cycles across all gates.
+For **estimated tokens**, start from the cost-estimation table in the visual-identity protocol and scale up by the actual `tool_calls` if it exceeds the estimate range.
 

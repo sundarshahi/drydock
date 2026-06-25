@@ -22,15 +22,14 @@ When mode is **Full Build**, follow this EXACT sequence:
 
 **Reprint this dashboard** at every phase transition and before every gate, updating phase statuses (`○ pending` → `● active` → `✓ complete ⏱ Xm Ys`). Track elapsed time per phase and total. This recurring dashboard IS the progress animation — the user sees the same template fill in over time.
 
-2. **Bootstrap workspace:**
+2. **Bootstrap workspace + deploy protocols** — run the bundled script (one deterministic command instead of hand-running `mkdir` + copying each protocol):
 ```bash
-mkdir -p Shipyard/.protocols/
-mkdir -p Shipyard/.orchestrator/
-mkdir -p Shipyard/.orchestrator/receipts/
-mkdir -p Shipyard/.orchestrator/overrides/
+bash "${CLAUDE_PLUGIN_ROOT}/skills/shipyard/scripts/bootstrap-workspace.sh" 2>/dev/null \
+  || bash "${CLAUDE_SKILL_DIR}/scripts/bootstrap-workspace.sh"
 ```
+It creates `Shipyard/.protocols/`, `Shipyard/.orchestrator/receipts/`, and `Shipyard/.orchestrator/overrides/`, and copies every shared protocol from the plugin's `skills/_shared/protocols/` into `Shipyard/.protocols/`. If it prints a `WARN` that it could not locate the protocols, fall back to writing each from the summaries in step 3.
 
-3. **Write shared protocols** to `Shipyard/.protocols/`:
+3. **Shared protocols** (deployed by the script in step 2 — this table is the reference / fallback if the script could not locate the source):
 
 | Protocol File | Content |
 |---------------|---------|
@@ -49,7 +48,7 @@ mkdir -p Shipyard/.orchestrator/overrides/
 | `architecture-boundaries.md` | Architecture boundary rules: module/service boundaries, dependency direction, layering, and the architecture-boundary gate enforced at Gate 3. Loads into architect/build/review agents. |
 | `compliance-protocol.md` | Compliance control mapping: framework scoping (SOC 2/HIPAA/GDPR/PCI/CCPA/ISO 27001/FedRAMP), mandatory controls-present/missing reporting, consumes security-engineer PII/encryption outputs. Loads into compliance-officer. |
 
-Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
+If the bootstrap script could not locate the plugin's `skills/_shared/protocols/` (it prints a `WARN`), write each protocol to `Shipyard/.protocols/` from the summaries above.
 
 4. **Codebase discovery — detect greenfield vs brownfield:**
 

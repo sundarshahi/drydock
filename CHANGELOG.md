@@ -16,7 +16,20 @@ All notable changes to **Shipyard**.
   live routing smoke test (orchestrator still loads with zero plugin errors and
   classifies correctly).
 
+### Added
+- **Scripts over prose** — two deterministic orchestrator procedures that were
+  described in prose are now bundled scripts the orchestrator runs directly:
+  `skills/shipyard/scripts/bootstrap-workspace.sh` (scaffold `Shipyard/` +
+  deploy all shared protocols, with `${CLAUDE_PLUGIN_ROOT}` → `${CLAUDE_SKILL_DIR}`
+  → script-relative source resolution) and `skills/shipyard/scripts/aggregate-cost.py`
+  (sum effort/cost metrics across receipts, dedup artifacts, tolerate malformed
+  receipts). The full-build setup, non-Full-Build mode bootstrap, and final-summary
+  docs now call these instead of re-deriving them each run.
+
 ### Testing
+- **Bundled-script eval** — `test_shipyard_scripts.py` runs both helper scripts
+  against throwaway fixtures and asserts their behavior (protocols deployed,
+  metrics aggregated/deduplicated), so a script regression fails CI for free.
 - **SKILL.md size budget** — new deterministic test `test_skill_size.py` fails
   any `skills/*/SKILL.md` over 500 lines, locking in the progressive-disclosure
   win (`phases/`/`reference/` detail files are exempt).
