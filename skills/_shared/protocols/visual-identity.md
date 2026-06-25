@@ -40,7 +40,7 @@ Each section should feel visually distinct from the last. Grids for parallel sta
 | Skill names | Title Case | `Software Engineer`, `QA Engineer` |
 | Status labels | lowercase | `active`, `pending`, `complete` |
 | Metrics labels | Title Case | `Services`, `Endpoints`, `Coverage` |
-| Mode names | Title Case | `Wave A`, `Gate 2`, `Full Build` |
+| Mode names | Title Case | `Full Build`, `Gate 2`, `Harden` |
 
 ### Spacing
 
@@ -101,20 +101,17 @@ Three tiers of visual weight. Used consistently — never mix tiers for the same
 
 ### Tier 2 — Single-Line Box `┌─┐`
 
-**Used for:** Wave announcements, agent status boards, intermediate status blocks. The workhorse container for structured multi-line information.
+**Used for:** Phase announcements, agent status boards, intermediate status blocks. The workhorse container for structured multi-line information.
 
 ```
-┌─ WAVE A ──────────────────────────────────── 7 agents ─┐
+┌─ HARDEN COMPLETE ─────────────────────────── 4 agents ─┐
 │                                                         │
-│  ✓ Software Engineer    4 services, 12 endpoints        │
-│  ✓ Frontend Engineer    4 page groups, 23 components    │
-│  ✓ DevOps               4 Dockerfiles, 1 compose        │
-│  ✓ QA Engineer          test plan: 47 test cases        │
-│  ✓ Security Engineer    STRIDE: 6 threats identified    │
-│  ✓ Code Reviewer        checklist: 15 checkpoints       │
-│  ✓ SRE                  4 SLOs, 12 alert rules          │
+│  ✓ QA Engineer          47 tests, 47 passing            │
+│  ✓ Security Engineer    6 findings (2 Critical/High)    │
+│  ✓ Code Reviewer        9 findings (1 Critical/High)    │
+│  ✓ Compliance Officer   18 controls (2 missing)         │
 │                                                         │
-│  7/7 complete                                ⏱ 4m 23s   │
+│  4/4 complete                                ⏱ 4m 23s   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -154,12 +151,12 @@ Always show position: `[current/total]`. This gives users a mental model of how 
     ○ notification-service
 ```
 
-### Wave Progress (orchestrator level)
+### Phase Progress (orchestrator level)
 
 Show agent count and completion status:
 
 ```
-  Wave A: 5/7 agents complete                  ⏱ 2m 14s
+  HARDEN: 3/4 agents complete                  ⏱ 2m 14s
 ```
 
 ### Phase Dashboard Line
@@ -245,8 +242,8 @@ Gates are the most psychologically important moments — the user is being asked
 When moving between phases or starting/ending waves, print a concise transition line:
 
 ```
-  → Starting BUILD phase (Wave A: 7 agents)
-  → Wave A complete, starting Wave B (4 agents against written code)
+  → Starting BUILD phase (3 agents)
+  → BUILD complete, starting HARDEN (4 agents against written code)
   → HARDEN complete, 3 Critical findings → entering remediation
   → All phases complete, presenting final summary
 ```
@@ -347,13 +344,13 @@ A full pipeline run should feel like this visual journey:
 5. ━━━     Architect skill output with [1/N] progress
 6.          Gate 2 ceremony (decision moment)
 7. ╔═══╗  Pipeline Dashboard (updated — DEFINE complete, BUILD active)
-8. ┌───┐  Wave A announcement (here's what's launching)
+8. ┌───┐  BUILD announcement (here's what's launching)
 9.          ...agents working autonomously...
-10. ┌───┐  Wave A completion (every agent's concrete results)
-11.         → Transition to Wave B
-12. ┌───┐  Wave B announcement
+10. ┌───┐  BUILD completion (every agent's concrete results)
+11.         → Transition to HARDEN
+12. ┌───┐  HARDEN announcement
 13.         ...agents working...
-14. ┌───┐  Wave B completion
+14. ┌───┐  HARDEN completion
 15. ╔═══╗  Pipeline Dashboard (updated — HARDEN complete)
 16. ━━━    Findings summary (severity grid)
 17.         → Transition to SHIP
