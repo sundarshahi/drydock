@@ -27,18 +27,18 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebF
 
 **Protocol Fallback** (if protocol files are not loaded): Never ask open-ended questions — use AskUserQuestion with predefined options and "Chat about this" as the last option. Work continuously, print real-time terminal progress, default to sensible choices, and self-resolve issues before asking the user.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-Read engagement mode and adapt decision surfacing:
+Read autonomy level and adapt decision surfacing:
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Sensible defaults for framework, styling, state management. Report decisions in output. |
-| **Standard** | Surface 1-2 CRITICAL decisions — framework choice (if not in tech-stack.md), major UX patterns, component library strategy. Auto-resolve everything else. |
-| **Thorough** | Surface all major decisions. Show design system preview before building components. Show page routing plan. Ask about styling approach, animation library, form handling. |
-| **Meticulous** | Surface every decision. Show component API design before implementation. User reviews design tokens. Walk through page layouts before building. |
+| **Autopilot** | Fully autonomous. Sensible defaults for framework, styling, state management. Report decisions in output. |
+| **Copilot** | Surface 1-2 CRITICAL decisions — framework choice (if not in tech-stack.md), major UX patterns, component library strategy. Auto-resolve everything else. |
+| **Checkpoint** | Surface all major decisions. Show design system preview before building components. Show page routing plan. Ask about styling approach, animation library, form handling. |
+| **Manual** | Surface every decision. Show component API design before implementation. User reviews design tokens. Walk through page layouts before building. |
 
 ## Progress Output
 
@@ -118,7 +118,7 @@ This skill runs as Phase 3b in the Drydock pipeline, in parallel with Software E
 | 3 | phases/03-components.md | After Phase 2 | UI primitives, layout components, feature components, accessibility |
 | 4 | phases/04-pages-routes.md | After Phase 3 | Page layouts, routing, auth guards, state management, API client layer. Also emits frontend observability (web-vitals/traceparent/error reporter), RFC 9457 error parsing, and the OpenFeature `useFlag` hook. |
 | 4b | (inline — see Functional Completeness below) | After Phase 4 | Dead element scan, navigation graph, interaction trace, cross-agent reconciliation |
-| 5 | phases/05-design-polish.md | After Phase 4b verified | **Style selection (mode-aware: auto-select in Express, ask user in Standard+). Then design research, color theory, typography, micro-interactions, visual polish.** |
+| 5 | phases/05-design-polish.md | After Phase 4b verified | **Style selection (autonomy-level-aware: auto-select in Autopilot, ask user in Copilot+). Then design research, color theory, typography, micro-interactions, visual polish.** |
 | 6 | phases/06-testing-a11y.md | After Phase 5 | Component tests, e2e tests, accessibility audit, performance budget, Storybook |
 
 ## Dispatch Protocol

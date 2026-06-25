@@ -19,7 +19,7 @@ Emits JSON to stdout:
    unique_artifacts, rework_cycles}
 
 Usage:
-  python3 aggregate-cost.py [WORKSPACE_DIR]   (default: ./Drydock)
+  python3 aggregate-cost.py [WORKSPACE_DIR]   (default: ./drydock)
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def aggregate(workspace: str) -> dict:
 
 
 def main(argv: list[str]) -> int:
-    workspace = argv[1] if len(argv) > 1 else "Drydock"
+    workspace = argv[1] if len(argv) > 1 else "drydock"
     print(json.dumps(aggregate(workspace), indent=2))
     return 0
 

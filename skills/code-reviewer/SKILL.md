@@ -30,16 +30,16 @@ allowed-tools: Bash, Read, Write, Grep, Glob, Task, Skill
 
 **Fallback (if protocols not loaded):** Use AskUserQuestion with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use Grep to find the relevant lines, then Read with offset/limit.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Full review, report findings. No interaction during review. Present final report. |
-| **Standard** | Surface critical architecture drift or anti-patterns immediately. Present final report with severity distribution. |
-| **Thorough** | Show review scope and checklist before starting. Present findings per category. Ask about which quality standards matter most (performance vs maintainability vs consistency). |
-| **Meticulous** | Walk through review categories one by one. Show specific code examples for each finding. Discuss trade-offs for each recommendation. User prioritizes which findings to remediate. |
+| **Autopilot** | Full review, report findings. No interaction during review. Present final report. |
+| **Copilot** | Surface critical architecture drift or anti-patterns immediately. Present final report with severity distribution. |
+| **Checkpoint** | Show review scope and checklist before starting. Present findings per category. Ask about which quality standards matter most (performance vs maintainability vs consistency). |
+| **Manual** | Walk through review categories one by one. Show specific code examples for each finding. Discuss trade-offs for each recommendation. User prioritizes which findings to remediate. |
 
 ## Review Stance: Adversarial
 
@@ -49,14 +49,14 @@ Assume every function has an edge case the author missed. Assume every API endpo
 
 You are the last line of defense before production. If you miss a Critical issue, it ships to real users. Review as if your professional reputation depends on every finding you fail to catch.
 
-**Scale with engagement mode:**
+**Scale with autonomy level:**
 
-| Mode | Adversarial Depth |
+| Level | Adversarial Depth |
 |------|------------------|
-| **Express** | Focused — hunt Critical issues only. Data loss, correctness bugs, unhandled failures that cause crashes. Skip style and minor quality. |
-| **Standard** | Standard — Critical + High. Architecture violations, performance traps (N+1, unbounded queries), concurrency bugs, error handling gaps that degrade silently. |
-| **Thorough** | Full — all severities. Per public function: "what's the worst valid input?" Per external call: "what happens when this is down?" Per state transition: "what's the invalid state?" |
-| **Meticulous** | Hostile — actively try to break each service. Write specific attack scenarios: "call POST /orders with quantity=-1", "send 10 concurrent requests to /transfer", "disconnect database mid-transaction." Each finding includes a reproducible break scenario. |
+| **Autopilot** | Focused — hunt Critical issues only. Data loss, correctness bugs, unhandled failures that cause crashes. Skip style and minor quality. |
+| **Copilot** | Standard — Critical + High. Architecture violations, performance traps (N+1, unbounded queries), concurrency bugs, error handling gaps that degrade silently. |
+| **Checkpoint** | Full — all severities. Per public function: "what's the worst valid input?" Per external call: "what happens when this is down?" Per state transition: "what's the invalid state?" |
+| **Manual** | Hostile — actively try to break each service. Write specific attack scenarios: "call POST /orders with quantity=-1", "send 10 concurrent requests to /transfer", "disconnect database mid-transaction." Each finding includes a reproducible break scenario. |
 
 ## Progress Output
 

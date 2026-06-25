@@ -35,7 +35,7 @@ def _fixture(tmp: Path, receipt_metrics: dict, artifacts: list[str]) -> None:
     (tmp / "test-results" / "junit.xml").write_text(_JUNIT)
     (tmp / "coverage" / "coverage-summary.json").write_text(_COV)
     (tmp / "services" / "api" / "foo.txt").write_text("ok")
-    rdir = tmp / "Drydock" / ".orchestrator" / "receipts"
+    rdir = tmp / "drydock" / ".orchestrator" / "receipts"
     rdir.mkdir(parents=True, exist_ok=True)
     (rdir / "Tqa.json").write_text(json.dumps(
         {"metrics": receipt_metrics, "artifacts": artifacts}))
@@ -43,7 +43,7 @@ def _fixture(tmp: Path, receipt_metrics: dict, artifacts: list[str]) -> None:
 
 def _run(tmp: Path) -> dict:
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT), str(tmp / "Drydock"), str(tmp)],
+        [sys.executable, str(SCRIPT), str(tmp / "drydock"), str(tmp)],
         capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(f"verify-gate exited {proc.returncode}: {proc.stderr}")
@@ -90,7 +90,7 @@ def run() -> list[str]:
     # CASE C — no artifacts at all → unverified (must NOT claim verified).
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
-        rdir = tmp / "Drydock" / ".orchestrator" / "receipts"
+        rdir = tmp / "drydock" / ".orchestrator" / "receipts"
         rdir.mkdir(parents=True)
         (rdir / "Tqa.json").write_text(json.dumps({"metrics": {"tests_passing": 5}}))
         r = _run(tmp)

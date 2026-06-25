@@ -37,28 +37,28 @@ If `drydock/.orchestrator/codebase-context.md` exists and mode is `brownfield`:
 - **API contracts must be backward-compatible** — new endpoints, not breaking changes
 - **Don't redesign what works** — focus architecture on the NEW features/requirements
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
 Read `drydock/.orchestrator/settings.md` at startup. Adapt discovery depth:
 
-| Mode | Discovery Approach |
+| Level | Discovery Approach |
 |------|-------------------|
-| **Express** | Auto-derive from BRD. Ask only if critical info missing. Conservative defaults. |
-| **Standard** | 5-7 questions across 2 rounds. Scale sizing + constraints. Fitness-derived architecture. |
-| **Thorough** | 12-15 questions across 4 structured rounds. Full capacity planning. Trade-off analysis. Architecture alternatives. |
-| **Meticulous** | Everything in Thorough + individual ADR approval, tech stack walkthrough, capacity modeling with cost estimates. |
+| **Autopilot** | Auto-derive from BRD. Ask only if critical info missing. Conservative defaults. |
+| **Copilot** | 5-7 questions across 2 rounds. Scale sizing + constraints. Fitness-derived architecture. |
+| **Checkpoint** | 12-15 questions across 4 structured rounds. Full capacity planning. Trade-off analysis. Architecture alternatives. |
+| **Manual** | Everything in Checkpoint + individual ADR approval, tech stack walkthrough, capacity modeling with cost estimates. |
 
-### Always-Resolved Defaults (every mode, never Thorough-gated)
+### Always-Resolved Defaults (every level, never Checkpoint-gated)
 
-Regardless of engagement mode — including Express — these three artifacts are ALWAYS produced. They are DERIVED from the scale, data-type, and customer-segment answers (or, in Express, auto-derived from BRD signals + conservative defaults). They are never gated behind Thorough/Meticulous-only rounds, because frontend/qa/sre/devops/software-engineer skills READ them and will hardcode wrong values if they are absent:
+Regardless of autonomy level — including Autopilot — these three artifacts are ALWAYS produced. They are DERIVED from the scale, data-type, and customer-segment answers (or, in Autopilot, auto-derived from BRD signals + conservative defaults). They are never gated behind Checkpoint/Manual-only rounds, because frontend/qa/sre/devops/software-engineer skills READ them and will hardcode wrong values if they are absent:
 
-| Always-resolved artifact | How it is resolved even in Express | Owner contract |
+| Always-resolved artifact | How it is resolved even in Autopilot | Owner contract |
 |--------------------------|-------------------------------------|----------------|
 | **Performance budget** — `docs/architecture/performance-budget.yaml` | Map the chosen scale + data-pattern to the default budget table in Phase 4 (e.g. small/balanced-CRUD → p95 500ms, LCP 2500ms, bundle 200KB). If no scale signal, use the small/balanced row. | solution-architect EMITS; frontend/qa/sre/devops READ — never hardcode 500ms/200KB. |
 | **Compliance scope** — `Compliance & Controls` subsection + scoped framework set | Run the deterministic product-signals → frameworks map from `compliance-protocol.md` against BRD/security PII signals. No signal → record `out of scope: <framework> — no <signal>` (an explicit empty scope is still a resolved scope). | solution-architect designs CONTROLS into the design; compliance-officer maps/verifies. |
-| **Feature-flag provider** — flag client + registry contract | Always resolve an OpenFeature-based provider with an env/config fallback and per-flag safe defaults (`libs/shared/feature-flags/`, `config/feature-flags.yaml`). In Express, default to the env/config provider with no external service. | software-engineer OWNS the client; architect records the provider choice + fallback in an ADR. |
+| **Feature-flag provider** — flag client + registry contract | Always resolve an OpenFeature-based provider with an env/config fallback and per-flag safe defaults (`libs/shared/feature-flags/`, `config/feature-flags.yaml`). In Autopilot, default to the env/config provider with no external service. | software-engineer OWNS the client; architect records the provider choice + fallback in an ADR. |
 
 Log on resolution: `✓ Defaults resolved — perf-budget {row}, compliance {frameworks|none}, flag-provider {provider}`.
 
@@ -162,7 +162,7 @@ digraph sa {
 
 | Phase | File | When to Load | Purpose |
 |-------|------|-------------|---------|
-| 1 | phases/01-discovery.md | Always first | Read existing context, scale & fitness interview (per engagement mode), architecture fitness function — derive pattern/infra/data/availability/growth from constraints |
+| 1 | phases/01-discovery.md | Always first | Read existing context, scale & fitness interview (per autonomy level), architecture fitness function — derive pattern/infra/data/availability/growth from constraints |
 | 2 | phases/02-architecture-design.md | After Phase 1 | ADRs (incl. required architecture-style/layering + feature-flag), Compliance & Controls subsection, system diagrams, 12/15-factor design principles, Phase 2 quality gate + user approval |
 | 3 | phases/03-tech-stack.md | After Phase 2 approved | tech-stack.md layer-by-layer selection table + criteria |
 | 4 | phases/04-api-contract.md | After Phase 3 | OpenAPI/gRPC/AsyncAPI; reusable RFC 9457 `Problem`, `IdempotencyKey`, `CursorPage`; OpenAPI validate+lint gate; performance-budget.yaml; Phase 4 quality gate |
@@ -235,6 +235,6 @@ drydock/solution-architect/
 | Over-engineering auth | Use managed auth (Auth0/Cognito) unless compliance requires self-hosted |
 | Ignoring multi-tenancy from start | Retrofitting tenant isolation is 10x harder than designing it in |
 | Skipping scale interview | "Build a SaaS" means nothing without scale context. 100 users vs 10M users is a completely different system. |
-| Ignoring engagement mode | Express: auto-derive. Standard: 2 rounds. Thorough: 4 rounds. Meticulous: full walkthrough. Read settings.md. |
+| Ignoring autonomy level | Autopilot: auto-derive. Copilot: 2 rounds. Checkpoint: 4 rounds. Manual: full walkthrough. Read settings.md. |
 | Designing for 10M users when there are 100 | Design for current + 10x. Not 1000x. Over-engineering kills velocity. |
-| Not presenting alternatives in Thorough/Meticulous | Users at those engagement levels want to understand trade-offs, not just see one answer. |
+| Not presenting alternatives in Checkpoint/Manual | Users at those autonomy levels want to understand trade-offs, not just see one answer. |

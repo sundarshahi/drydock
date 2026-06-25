@@ -103,7 +103,7 @@ After writing `api/openapi/*.yaml`, the spec is NOT handed off until it is **val
 
 ## Performance Budget Artifact — `docs/architecture/performance-budget.yaml` (single source of truth)
 
-Emit `docs/architecture/performance-budget.yaml` per the shared PERFORMANCE BUDGET contract. This is the ONE place perf targets live; frontend/qa/sre/devops READ it and MUST NOT hardcode 500ms/200KB. It is ALWAYS emitted (see Always-Resolved Defaults) — even in Express/Standard mode resolve a sensible default from the chosen scale + data-type.
+Emit `docs/architecture/performance-budget.yaml` per the shared PERFORMANCE BUDGET contract. This is the ONE place perf targets live; frontend/qa/sre/devops READ it and MUST NOT hardcode 500ms/200KB. It is ALWAYS emitted (see Always-Resolved Defaults) — even at Autopilot/Copilot autonomy resolve a sensible default from the chosen scale + data-type.
 
 Shape:
 ```yaml

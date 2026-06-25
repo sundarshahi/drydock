@@ -117,10 +117,10 @@ Use these resolved variables everywhere below (`<owner>`, `<marketplace-repo>`);
 
 ## Phase 1: Interview (Quick)
 
-**Engagement mode determines interview depth:**
-- **Express**: Infer all answers from the project context and agent prompts. Skip interview entirely. Report inferences.
-- **Standard**: Ask 1-2 key questions (purpose + trigger conditions). Auto-resolve the rest.
-- **Thorough/Meticulous**: Ask 3-4 questions using AskUserQuestion, one at a time:
+**Autonomy level determines interview depth:**
+- **Autopilot**: Infer all answers from the project context and agent prompts. Skip interview entirely. Report inferences.
+- **Copilot**: Ask 1-2 key questions (purpose + trigger conditions). Auto-resolve the rest.
+- **Checkpoint/Manual**: Ask 3-4 questions using AskUserQuestion, one at a time:
 
 1. **What does this skill do?** — Core purpose in one sentence
 2. **When should it trigger?** — Specific words, patterns, or situations
@@ -179,7 +179,7 @@ Table of mistake -> fix pairs.
 
 Each case lists: input prompt → expected trigger (yes/no) → expected behaviour/assertion. Keep them concrete so they can be replayed by hand or by a harness.
 
-**Skill review (mode-aware):** Express — proceed to packaging, report skill summary. Standard — present brief summary for approval. Thorough/Meticulous — present full SKILL.md for detailed review via AskUserQuestion.
+**Skill review (autonomy-level-aware):** Autopilot — proceed to packaging, report skill summary. Copilot — present brief summary for approval. Checkpoint/Manual — present full SKILL.md for detailed review via AskUserQuestion.
 
 ## Phase 3: Package as Plugin
 

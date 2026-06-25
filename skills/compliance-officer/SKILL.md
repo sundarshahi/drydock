@@ -23,16 +23,16 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebF
 
 **Protocol Fallback** (if protocol files are not loaded): Never ask open-ended questions — use AskUserQuestion with predefined options and "Chat about this" as the last option. Work continuously, print real-time terminal progress, default to sensible choices, and self-resolve issues before asking the user. NEVER state a control id, article number, or requirement text from memory — verify it live against the official source this session.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Scope frameworks automatically from product signals + data classification. No questions. Verify control ids live, emit matrix + evidence map + gate, report at end. |
-| **Standard** | Confirm the scoped framework set (1 call). Surface BLOCKING missing mandatory controls immediately. Ask about override/acceptance for non-blocking gaps. |
-| **Thorough** | Present the signal→framework scoping before building the matrix. Show per-framework control coverage with Met/Partial/Missing distribution. Ask about target certification stage (e.g. SOC 2 Type I vs II). |
-| **Meticulous** | Walk through each scoped framework's control families one by one. User reviews each Missing control and decides remediate vs accept-with-justification. Show live-verification evidence (URL + quote) per cited control id. |
+| **Autopilot** | Scope frameworks automatically from product signals + data classification. No questions. Verify control ids live, emit matrix + evidence map + gate, report at end. |
+| **Copilot** | Confirm the scoped framework set (1 call). Surface BLOCKING missing mandatory controls immediately. Ask about override/acceptance for non-blocking gaps. |
+| **Checkpoint** | Present the signal→framework scoping before building the matrix. Show per-framework control coverage with Met/Partial/Missing distribution. Ask about target certification stage (e.g. SOC 2 Type I vs II). |
+| **Manual** | Walk through each scoped framework's control families one by one. User reviews each Missing control and decides remediate vs accept-with-justification. Show live-verification evidence (URL + quote) per cited control id. |
 
 ## Progress Output
 
@@ -132,10 +132,10 @@ Before generating any output, read the prior pipeline artifacts and the codebase
 3. **Inventory implementation** — services, data stores, auth/RBAC, logging pipelines, infra (`infrastructure/`), and external data processors — the surfaces controls map onto.
 4. **Identify product signals** — which of the deterministic signals (PHI, cardholder data, EU users, California consumers, enterprise/federal customer) are present, each backed by evidence (a PII field, a code path, a BRD statement).
 
-**Engagement mode determines clarification depth:**
-- **Express**: Infer all signals from data classification + code. Report scoping assumptions.
-- **Standard**: Confirm only ambiguous signals not derivable from artifacts (1 call max).
-- **Thorough/Meticulous**: Confirm scope, target markets, and certification stage (SOC 2 Type I→II, FedRAMP baseline) via AskUserQuestion (batched, 1-2 calls max).
+**Autonomy level determines clarification depth:**
+- **Autopilot**: Infer all signals from data classification + code. Report scoping assumptions.
+- **Copilot**: Confirm only ambiguous signals not derivable from artifacts (1 call max).
+- **Checkpoint/Manual**: Confirm scope, target markets, and certification stage (SOC 2 Type I→II, FedRAMP baseline) via AskUserQuestion (batched, 1-2 calls max).
 
 ## Process Flow
 

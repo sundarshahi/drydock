@@ -119,17 +119,17 @@ If the bootstrap script could not locate the plugin's `skills/_shared/protocols/
 
    All agents read this file before executing. It overrides default "create from scratch" behavior.
 
-5. **Engagement mode:**
+5. **Autonomy level:**
 
 ```python
 AskUserQuestion(questions=[{
   "question": "How deeply should the pipeline involve you in decisions?",
-  "header": "Engagement Mode",
+  "header": "Autonomy Level",
   "options": [
-    {"label": "Standard (Recommended)", "description": "3 gates + moderate architect interview. Best balance of speed and control."},
-    {"label": "Express", "description": "Minimal interaction. 3 gates only, auto-derive architecture from BRD. Fastest."},
-    {"label": "Thorough", "description": "Deep interviews at PM and Architect. Full capacity planning. Review phase summaries."},
-    {"label": "Meticulous", "description": "Maximum depth. Approve each ADR individually. Review every agent output. Full control."}
+    {"label": "Copilot (Recommended)", "description": "3 gates + moderate architect interview. Best balance of speed and control."},
+    {"label": "Autopilot", "description": "Minimal interaction. 3 gates only, auto-derive architecture from BRD. Fastest."},
+    {"label": "Checkpoint", "description": "Deep interviews at PM and Architect. Full capacity planning. Review phase summaries."},
+    {"label": "Manual", "description": "Maximum depth. Approve each ADR individually. Review every agent output. Full control."}
   ],
   "multiSelect": false
 }])
@@ -138,15 +138,15 @@ AskUserQuestion(questions=[{
 Write the choice to `drydock/.orchestrator/settings.md`:
 ```markdown
 # Pipeline Settings
-Engagement: [express|standard|thorough|meticulous]
+Autonomy: [autopilot|copilot|checkpoint|manual]
 Parallelism: [maximum|standard|sequential]
 ```
 
-All skills read this file at startup to adapt their depth. The engagement mode controls:
-- **PM interview depth** — Express: 2-3 questions. Standard: 3-5. Thorough: 5-8. Meticulous: 8-12.
-- **Architect discovery depth** — Express: auto-derive. Standard: 5-7 questions. Thorough: 12-15 with capacity planning. Meticulous: full walkthrough + individual ADR approval.
-- **Phase summaries** — Thorough/Meticulous show intermediate outputs between phases.
-- **Gate detail** — Meticulous adds per-agent output review at each gate.
+All skills read this file at startup to adapt their depth. The autonomy level controls:
+- **PM interview depth** — Autopilot: 2-3 questions. Copilot: 3-5. Checkpoint: 5-8. Manual: 8-12.
+- **Architect discovery depth** — Autopilot: auto-derive. Copilot: 5-7 questions. Checkpoint: 12-15 with capacity planning. Manual: full walkthrough + individual ADR approval.
+- **Phase summaries** — Checkpoint/Manual show intermediate outputs between phases.
+- **Gate detail** — Manual adds per-agent output review at each gate.
 
 6. **Parallelism preference:**
 
@@ -167,7 +167,7 @@ AskUserQuestion(questions=[{
 Store all choices in `drydock/.orchestrator/settings.md`:
 ```markdown
 # Pipeline Settings
-Engagement: [express|standard|thorough|meticulous]
+Autonomy: [autopilot|copilot|checkpoint|manual]
 Parallelism: [maximum|standard|sequential]
 Worktrees: [enabled|disabled]
 ```
@@ -202,4 +202,4 @@ Create all tasks (T1–T13 plus the HARDEN-phase compliance task T6e) with depen
 
 11. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
 
-**Key principle:** The user already told you what to build. Research, plan, start building. Pause at the 3 approval gates. In Thorough/Meticulous mode, also show phase summaries between major phases — but never block on them (inform, don't gate).
+**Key principle:** The user already told you what to build. Research, plan, start building. Pause at the 3 approval gates. In Checkpoint/Manual mode, also show phase summaries between major phases — but never block on them (inform, don't gate).

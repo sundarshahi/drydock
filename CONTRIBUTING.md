@@ -26,7 +26,17 @@ Thanks for helping improve Drydock. This plugin is a coordinated set of orchestr
 
 ## Validation
 
-CI runs `.github/workflows/validate.yml` on every PR: it checks `plugin.json` is valid JSON with required fields, lints `hooks/hooks.json`, and verifies every `skills/*/SKILL.md` has `name` + `description` frontmatter. Run the equivalent checks locally before pushing. Keep YAML and JSON lint-clean.
+Two workflows run on every PR:
+
+- `.github/workflows/validate.yml` installs the Claude Code CLI and runs `claude plugin validate . --strict` (failing on any error *or* warning), plus a YAML frontmatter check on every `skills/*/SKILL.md` and `agents/*.md` (`name` present, `description` present and ≤ 1024 chars).
+- `.github/workflows/evals.yml` runs the deterministic eval suite (`make evals`) — pure-Python structural invariants, no API key or Claude CLI.
+
+Run both locally before pushing, and keep YAML and JSON lint-clean:
+
+```sh
+claude plugin validate . --strict
+make evals
+```
 
 ## Pull requests
 

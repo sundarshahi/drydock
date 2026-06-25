@@ -99,7 +99,7 @@ Launch backend and frontend together. Delegate the following to their subagents 
   - Phase 2: Design System — functional defaults (tokens, theme, Tailwind)
   - Phase 3: Components — UI primitives first (sequential), then layout+feature (parallel)
   - Phase 4: Pages + Routing — parallel by route group, then functional verification (4b)
-  - Phase 5: Design & Polish — Style selection is engagement-mode-aware: Express: auto-select best style for the domain, report choice, proceed. Standard+: ask user via AskUserQuestion (Creative | Elegance | High Tech | Corporate | Custom).
+  - Phase 5: Design & Polish — Style selection is autonomy-level-aware: Autopilot: auto-select best style for the domain, report choice, proceed. Copilot+: ask user via AskUserQuestion (Creative | Elegance | High Tech | Corporate | Custom).
   - Phase 6: Testing & A11y — component tests, accessibility audit
   Write frontend to project root: `frontend/`. Write workspace artifacts to `drydock/frontend-engineer/`. When complete, write a receipt JSON to `drydock/.orchestrator/receipts/T3b-frontend-engineer.json` with task, agent, phase, status, artifacts, metrics, effort, verification — the verification block MUST assert "security-defaults checklist passes" (the BUILD Quality Bar line from security-defaults.md) with per-rule pass/fail evidence — then mark its task complete.
 

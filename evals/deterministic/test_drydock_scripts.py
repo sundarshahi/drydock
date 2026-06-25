@@ -47,7 +47,7 @@ def _check_bootstrap(failures: list[str]) -> None:
         if proc.returncode != 0:
             failures.append(f"bootstrap exited {proc.returncode}: {proc.stderr.strip()}")
             return
-        base = Path(tmp) / "Drydock"
+        base = Path(tmp) / "drydock"
         for d in (".protocols", ".orchestrator/receipts", ".orchestrator/overrides"):
             if not (base / d).is_dir():
                 failures.append(f"bootstrap did not create drydock/{d}")
@@ -64,7 +64,7 @@ def _check_aggregate(failures: list[str]) -> None:
         failures.append(f"missing script: {AGGREGATE.relative_to(ROOT)}")
         return
     with tempfile.TemporaryDirectory() as tmp:
-        receipts = Path(tmp) / "Drydock" / ".orchestrator" / "receipts"
+        receipts = Path(tmp) / "drydock" / ".orchestrator" / "receipts"
         receipts.mkdir(parents=True)
         (receipts / "T1.json").write_text(json.dumps(
             {"effort": {"tool_calls": 10, "files_read": 5, "files_written": 3},
@@ -73,11 +73,11 @@ def _check_aggregate(failures: list[str]) -> None:
             {"effort": {"tool_calls": 7, "files_read": 2, "files_written": 4},
              "artifacts": ["b.md", "c.md"]}))  # b.md duplicates T1 -> dedup to 3
         (receipts / "T3.json").write_text("not valid json")  # must be ignored
-        (Path(tmp) / "Drydock" / ".orchestrator" / "rework-log.md").write_text(
+        (Path(tmp) / "drydock" / ".orchestrator" / "rework-log.md").write_text(
             "## Gate 2 — Rework 1\n## Gate 3 — Rework 1\n")
 
         proc = subprocess.run(
-            [sys.executable, str(AGGREGATE), str(Path(tmp) / "Drydock")],
+            [sys.executable, str(AGGREGATE), str(Path(tmp) / "drydock")],
             capture_output=True, text=True,
         )
         if proc.returncode != 0:

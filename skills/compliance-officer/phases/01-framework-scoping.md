@@ -49,11 +49,11 @@ Apply the map from `drydock/.protocols/compliance-protocol.md` exactly. A presen
 - **SOC 2 sequencing:** scope Type I (design at a point in time) first, then Type II (operating effectiveness over a window). Record both as a sequence, not a choice.
 - **Ambiguous signal:** scope IN and flag for confirmation — never silently drop a possible obligation.
 
-### Step 3: Resolve Ambiguity by Engagement Mode
+### Step 3: Resolve Ambiguity by Autonomy Level
 
-- **Express:** infer all signals from artifacts; report assumptions; proceed.
-- **Standard:** confirm only signals not derivable from artifacts (1 AskUserQuestion, batched options).
-- **Thorough/Meticulous:** confirm the scoped set, target markets, and certification stage (SOC 2 Type I vs II; FedRAMP Low/Moderate/High baseline) via AskUserQuestion (1-2 calls max, predefined options + "Chat about this" last).
+- **Autopilot:** infer all signals from artifacts; report assumptions; proceed.
+- **Copilot:** confirm only signals not derivable from artifacts (1 AskUserQuestion, batched options).
+- **Checkpoint/Manual:** confirm the scoped set, target markets, and certification stage (SOC 2 Type I vs II; FedRAMP Low/Moderate/High baseline) via AskUserQuestion (1-2 calls max, predefined options + "Chat about this" last).
 
 Never ask open-ended questions — follow `drydock/.protocols/ux-protocol.md`.
 
@@ -93,4 +93,4 @@ Before proceeding to Phase 2, verify:
 
 Scoping is NOT a guess. "We're probably SOC 2" is not a decision — "SOC 2 scoped IN; signal: B2B enterprise sales per `BRD/customers.md:12`; Type I first, then Type II" is. Every in-scope framework traces to an evidenced signal, and every out-of-scope framework records the specific signal that was absent. Do not pin requirement text here — only editions; the actual control ids and requirement text are verified live in Phase 2.
 
-**In Thorough/Meticulous mode, present the scoping decision to the user before proceeding to Phase 2.**
+**In Checkpoint/Manual level, present the scoping decision to the user before proceeding to Phase 2.**

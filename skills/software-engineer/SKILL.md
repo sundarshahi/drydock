@@ -26,20 +26,20 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch, WebF
 
 **Protocol Fallback** (if protocol files are not loaded): Never ask open-ended questions — use AskUserQuestion with predefined options and "Chat about this" as the last option. Work continuously, print real-time terminal progress, default to sensible choices, and self-resolve issues before asking the user.
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-Read engagement mode and adapt decision surfacing:
+Read autonomy level and adapt decision surfacing:
 
 | Mode | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Sensible defaults for all implementation choices. Report decisions in output summary only. |
-| **Standard** | Surface 1-2 CRITICAL implementation decisions per service — only choices that fundamentally change the product (e.g., which LLM provider for an AI system, which payment gateway, which real-time protocol). Auto-resolve everything else. |
-| **Thorough** | Surface all major implementation decisions before acting. Show implementation plan per service. Ask about key library/integration choices. Show phase summary after each major step. |
-| **Meticulous** | Surface every decision point. Show code structure plan before writing. User can override any library, pattern, or integration choice. Show output after each phase. |
+| **Autopilot** | Fully autonomous. Sensible defaults for all implementation choices. Report decisions in output summary only. |
+| **Copilot** | Surface 1-2 CRITICAL implementation decisions per service — only choices that fundamentally change the product (e.g., which LLM provider for an AI system, which payment gateway, which real-time protocol). Auto-resolve everything else. |
+| **Checkpoint** | Surface all major implementation decisions before acting. Show implementation plan per service. Ask about key library/integration choices. Show phase summary after each major step. |
+| **Manual** | Surface every decision point. Show code structure plan before writing. User can override any library, pattern, or integration choice. Show output after each phase. |
 
-**Decision surfacing format** (Standard/Thorough/Meticulous):
+**Decision surfacing format** (Copilot/Checkpoint/Manual):
 ```python
 AskUserQuestion(questions=[{
   "question": "Implementing {service_name}. Key decision: {decision description}",

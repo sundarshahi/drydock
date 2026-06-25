@@ -197,7 +197,7 @@ def run() -> list[str]:
     # SCENARIO 3: both unset, cwd contains drydock/.protocols/<sample> -> path-3 hit.
     sentinel = "SENTINEL-DRYDOCK-PROTOCOLS-FALLBACK\n"
     with tempfile.TemporaryDirectory() as tmp3:
-        proto_dir = Path(tmp3) / "Drydock" / ".protocols"
+        proto_dir = Path(tmp3) / "drydock" / ".protocols"
         proto_dir.mkdir(parents=True)
         (proto_dir / SAMPLE).write_text(sentinel, encoding="utf-8")
         out = _run_loader(

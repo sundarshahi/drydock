@@ -1,20 +1,20 @@
 # Phase 5: Design & Polish
 
-## Style Selection — Engagement Mode Aware
+## Style Selection — Autonomy Level Aware
 
-Read engagement mode from `drydock/.orchestrator/settings.md`.
+Read autonomy level from `drydock/.orchestrator/settings.md`.
 
-### Express Mode
+### Autopilot Level
 Auto-select the most domain-appropriate style based on the BRD:
 - Developer tools, data platforms, APIs → **High Tech**
 - Consumer apps, creative products, marketplaces → **Creative**
 - Finance, healthcare, legal, enterprise → **Corporate**
 - Premium SaaS, lifestyle, design-focused products → **Elegance**
 
-Report the selection: `Style: {selected} (auto-selected for {domain} — Express mode)`
+Report the selection: `Style: {selected} (auto-selected for {domain} — Autopilot level)`
 Proceed immediately to 5.1 Domain Research.
 
-### Standard / Thorough / Meticulous Mode
+### Copilot / Checkpoint / Manual Level
 **Do NOT start implementing. Do NOT start researching. Do NOT touch any files.**
 
 The FIRST action in this phase is to ask the user which visual style they want. Use AskUserQuestion IMMEDIATELY:
@@ -50,7 +50,7 @@ The frontend is functional — every button works, every link resolves, every fo
 
 Phase 4b (Functional Verification) MUST be complete. Every interactive element works. Do NOT polish a broken frontend.
 
-The style selected above (via the engagement-mode-aware process) becomes the **design directive** that drives ALL subsequent decisions in this phase. Every choice below (colors, typography, spacing, interactions) must align with the selected style.
+The style selected above (via the autonomy-level-aware process) becomes the **design directive** that drives ALL subsequent decisions in this phase. Every choice below (colors, typography, spacing, interactions) must align with the selected style.
 
 ### Style Reference Guide
 
@@ -236,7 +236,7 @@ Before moving to Phase 6 (Testing):
 - [ ] Responsive design looks good (not just functional) at all breakpoints
 - [ ] Micro-interactions provide feedback for every user action
 
-**Design review (mode-aware):** Express — proceed to Phase 6, report design summary. Standard — show brief before/after. Thorough/Meticulous — present full design system comparison via AskUserQuestion.
+**Design review (autonomy-level-aware):** Autopilot — proceed to Phase 6, report design summary. Copilot — show brief before/after. Checkpoint/Manual — present full design system comparison via AskUserQuestion.
 
 ## Quality Bar
 

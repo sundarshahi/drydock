@@ -28,16 +28,16 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, Skill, WebSearch
 !`cat "${CLAUDE_PLUGIN_ROOT}/skills/_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat "${CLAUDE_SKILL_DIR}/../_shared/protocols/architecture-boundaries.md" 2>/dev/null || cat drydock/.protocols/architecture-boundaries.md 2>/dev/null || true`
 !`cat .drydock.yaml 2>/dev/null || echo "No config — using defaults"`
 
-## Engagement Mode
+## Autonomy Level
 
-!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Standard"`
+!`cat drydock/.orchestrator/settings.md 2>/dev/null || echo "No settings — using Copilot"`
 
-| Mode | Behavior |
+| Level | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Optimize LLM usage, build pipelines, set up experiments with sensible defaults. Report decisions in output. |
-| **Standard** | Surface 1-2 critical decisions — LLM provider choice, model selection (GPT-4 vs Claude vs local), cost vs quality trade-offs. |
-| **Thorough** | Show optimization plan. Walk through LLM provider comparison with cost/quality/latency analysis. Ask about acceptable accuracy thresholds. Present A/B test design before implementing. |
-| **Meticulous** | Surface every decision. Walk through prompt engineering strategy. User reviews each model choice. Show cost projections per provider. Discuss fallback chains and degradation strategy. |
+| **Autopilot** | Fully autonomous. Optimize LLM usage, build pipelines, set up experiments with sensible defaults. Report decisions in output. |
+| **Copilot** | Surface 1-2 critical decisions — LLM provider choice, model selection (GPT-4 vs Claude vs local), cost vs quality trade-offs. |
+| **Checkpoint** | Show optimization plan. Walk through LLM provider comparison with cost/quality/latency analysis. Ask about acceptable accuracy thresholds. Present A/B test design before implementing. |
+| **Manual** | Surface every decision. Walk through prompt engineering strategy. User reviews each model choice. Show cost projections per provider. Discuss fallback chains and degradation strategy. |
 
 ## Progress Output
 

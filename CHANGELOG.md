@@ -12,8 +12,51 @@ All notable changes to **Drydock**.
   project config file (`.drydock.yaml`). The GitHub repository itself stays at
   `sundarshahi/drydock`. Verified by the eval suite, `validate --strict`, and a
   live routing smoke test (`route='drydock:drydock'`, zero plugin errors).
+- **Engagement modes renamed to "Autonomy Levels"** — the four levels
+  `Express / Standard / Thorough / Meticulous` are now
+  `Autopilot / Copilot / Checkpoint / Manual`, and the concept "engagement mode"
+  is now "autonomy level" (how many decisions the pipeline surfaces to the user).
+  Applied consistently across all 15 agents and the shared protocols; the default
+  is **Copilot**. Naming only — the behavioral spectrum (Autopilot = fully
+  autonomous → Manual = reviews every decision) is unchanged.
+
+### Docs
+- **Documentation hardened for the marketplace submission.** `DEV_PROTOCOL.md`
+  corrected: agent/protocol counts fixed (15 agents, 14 shared protocols), version
+  examples aligned to the `2.x` line, the competitive-analysis tables rewritten as
+  capability-focused language (no named third-party products), and stale
+  original-project references removed. `SECURITY.md` supported-versions table
+  aligned to `2.1.x`. `README.md` "Autonomy Levels" section rewritten with clearer
+  selection guidance. `VISION.md` rephrased for clarity — goal-first framing, the
+  three gates named consistently (Requirements / Architecture / Production
+  Readiness), and the autonomy-level terminology applied; all eleven principles and
+  their hard rules are preserved.
+- **README rewritten for first-time readers** — a plain-language intro, a
+  quick-start with a concrete example, and a clearer pipeline diagram (the three
+  gates shown as explicit approval points, parallel phases marked). `SECURITY.md`
+  scope corrected to the actual executable surface — both hooks (`secret-guard.sh`,
+  `session-guard.sh`) plus the bundled `bootstrap-workspace.sh` / `verify-gate.py`
+  / `aggregate-cost.py` scripts. `CONTRIBUTING.md` CI description updated to the
+  current `claude plugin validate . --strict` + deterministic-evals workflows.
 
 ### Changed
+- **`product-manager` is now self-contained** — it no longer invokes the external
+  `superpowers:writing-plans` skill; when an implementation outline is needed it
+  writes a lightweight inline task breakdown (detailed planning is owned downstream
+  by the orchestrator and Solution Architect). Removes a hard dependency on a
+  third-party plugin.
+
+### Fixed
+- **Case-sensitive-filesystem bug in the workspace directory name.** When the
+  runtime workspace was lowercased to `drydock/`, several path references were
+  left as `Drydock/` — the `session-guard` hook's `SUITE_DIR`, the default
+  workspace and prune-set in `aggregate-cost.py` / `verify-gate.py`, and the
+  deterministic eval fixtures. On a case-insensitive filesystem (macOS) these
+  still resolved, but on a case-sensitive one (Linux/CI) they pointed at a
+  non-existent `Drydock/`, so the session-guard never fired and the helper
+  scripts defaulted to the wrong directory. All workspace path references are now
+  lowercase `drydock/`, matching what `bootstrap-workspace.sh` creates. This also
+  fixes the deterministic eval suite, which was green on macOS but failing in CI.
 - **Progressive-disclosure refactor** — the four oversized `SKILL.md` files were
   slimmed below the 500-line budget by deferring per-phase detail to on-demand
   `phases/` and `reference/` files (loaders + frontmatter stay in `SKILL.md`):
