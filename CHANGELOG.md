@@ -62,8 +62,11 @@ Marketplace-submission release. The plugin is renamed to **drydock**, engagement
   phase file and could be skipped, so a build could start without ever asking. The
   always-loaded orchestrator `SKILL.md` now carries an explicit **MANDATORY**
   instruction to present both `AskUserQuestion` prompts before any agent is
-  dispatched. Also fixed three stray `engagement` references the autonomy rename
-  missed (orchestrator phase index, Full Build section, and the cost-estimation note).
+  dispatched. Also fixed four autonomy-concept `engagement` references the rename
+  missed (orchestrator phase index, Full Build section, the cost-estimation note,
+  and the `ux-protocol` autonomy/involvement line). The security term **"Rules of
+  Engagement" (RoE) / "Engagement Scope"** in the VAPT phases is left unchanged on
+  purpose — a different, correct meaning.
 - **Case-sensitive-filesystem bug in the workspace directory name.** When the
   runtime workspace was lowercased to `drydock/`, several path references were
   left as `Drydock/` — the `session-guard` hook's `SUITE_DIR`, the default
