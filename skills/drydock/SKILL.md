@@ -352,7 +352,7 @@ drydock/
 
 A REAL secret-guard hook enforces secret hygiene during ALL phases. It is implemented at `hooks/secret-guard.sh` and wired as a `PreToolUse` hook in `hooks/hooks.json` (matching `Write|Edit|MultiEdit|NotebookEdit` and `Bash`). On every matching tool call it:
 - **HARD-BLOCKS** writing, editing, staging, or committing secret-bearing paths: `.env`, `.env.*`, `*.key`, `*.pem`, `credentials.json`, `*.p12`, `*.pfx`, `id_rsa`, `*.keystore`.
-- **FAST-SCANS** the target content and the staged git diff (on `git add` / `git commit`) for known secret patterns and private-key headers, using `gitleaks` when available and a built-in grep/regex fallback otherwise.
+- **FAST-SCANS** for known secret patterns and private-key headers across (a) the target content of `Write`/`Edit`/`MultiEdit`/`NotebookEdit`, (b) the staged git diff, and (c) the contents of files about to be added — including brand-new untracked files — on `git add` / `git commit`, using `gitleaks` when available and a built-in grep/regex fallback otherwise.
 - **Exit codes:** `0` allows the tool call; `2` BLOCKS it and surfaces the reason on stderr to Claude and the user.
 
 **Override (not default):** set `DRYDOCK_ALLOW_SECRET=1` to bypass the block — it allows the call but emits a loud warning on stderr. Use only for intentional, reviewed exceptions.
