@@ -24,7 +24,7 @@ Classify the system:
 - **Data-Intensive Platform** — Heavy analytics, reporting, data pipelines
 - **Hybrid** — Combination of the above
 
-Scope the engagement based on classification:
+Scope the audit based on classification:
 - LLM-Powered App -> Phases 1, 2, 3, 6 are primary
 - ML-Enhanced Product -> Phases 1, 3, 5, 6 are primary
 - Data-Intensive Platform -> Phases 1, 3, 4, 6 are primary

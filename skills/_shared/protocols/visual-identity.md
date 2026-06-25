@@ -26,7 +26,7 @@ Never say "analysis complete." Say "analyzed 247 files across 3 services, 12 end
 
 ### 5. Dynamic Contrast
 
-Each section should feel visually distinct from the last. Grids for parallel status. Lists for sequential steps. Metrics blocks for summaries. Monotony kills engagement.
+Each section should feel visually distinct from the last. Grids for parallel status. Lists for sequential steps. Metrics blocks for summaries. Monotony bores the reader.
 
 ---
 
