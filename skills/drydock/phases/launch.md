@@ -9,7 +9,7 @@ The go-to-market phase. Runs **after SHIP and after Gate 3 (production-readiness
 Enforce strictly (see `drydock/.protocols/conflict-resolution.md`):
 - **growth-marketer** owns positioning, messaging, and the launch plan — the narrative and demand generation.
 - **sales-strategist** owns pricing & packaging, sales collateral, and sales process — it CONSUMES growth-marketer's positioning, does NOT re-author it, and turns the **security-engineer + compliance-officer evidence** into a buyer-facing trust pack.
-- **customer-success** owns onboarding, support ops, and retention — it sources the help center from **technical-writer** docs and routes prioritized feedback to **product-manager** (does not change requirements).
+- **customer-success** owns onboarding, support ops, and retention — it sources the help center from **technical-writer** docs (a **soft input**: T11 runs in SUSTAIN, so it bootstraps from best-available docs at LAUNCH and refines once T11 lands) and routes prioritized feedback to **product-manager** (does not change requirements).
 - None of these author product requirements (product-manager) or write product code (software/frontend-engineer).
 
 ## Re-Anchor

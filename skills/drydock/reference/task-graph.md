@@ -121,7 +121,7 @@ T13: Compound Learning + Assembly   (customer-success carries into SUSTAIN)
 
 Create tasks with TaskCreate, then set dependencies with TaskUpdate using the returned IDs.
 
-**Wave A tasks** — all depend on T2 (architecture), no dependencies on each other:
+**Wave A tasks** — the BUILD/ANALYSIS rows (T3a–T9a) all depend on T2 (architecture) and have no dependencies on each other. The DEFINE rows (T1, T2, T2b) are listed here for completeness with their own blockers — note **T2b depends on T1 (the BRD), not T2**, and runs in parallel with the architect:
 
 | Task | Blocked By | Notes |
 |------|-----------|-------|
