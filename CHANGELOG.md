@@ -2,7 +2,9 @@
 
 All notable changes to **Drydock**.
 
-## [Unreleased]
+## [2.2.0] — 2026-06-25
+
+Marketplace-submission release. The plugin is renamed to **drydock**, engagement modes become **autonomy levels**, the documentation is hardened and clarified for publication, and the findings from a pre-submission audit are fixed. No change to generated-artifact behavior or the public skill contract beyond the rename.
 
 ### Renamed
 - **Plugin renamed `shipyard` → `drydock`** ahead of the community-marketplace
@@ -47,6 +49,14 @@ All notable changes to **Drydock**.
   third-party plugin.
 
 ### Fixed
+- **Pre-submission audit fixes.** (1) `code-reviewer` dispatched its four parallel
+  review sub-tasks to `phases/0X-*.md` checklist files that do not exist — the
+  content is inline in the SKILL.md — so the dispatch now points at the inline
+  Phase 1–4 sections, restoring the review checklists. (2) The `plugin.json`
+  description claimed all 15 agents run as isolated subagents; corrected to "11 of
+  15" (the orchestrator and three planning agents run in-context as skills).
+  (3) The "12 execution modes" claim is reconciled with the orchestrator's
+  classification table (12 routed modes **plus a Custom fallback**).
 - **Case-sensitive-filesystem bug in the workspace directory name.** When the
   runtime workspace was lowercased to `drydock/`, several path references were
   left as `Drydock/` — the `session-guard` hook's `SUITE_DIR`, the default
@@ -87,6 +97,11 @@ All notable changes to **Drydock**.
   docs now call these instead of re-deriving them each run.
 
 ### Testing
+- **Dangling-reference eval** — new `test_skill_file_refs.py` asserts every
+  `${CLAUDE_PLUGIN_ROOT}/skills/*/(phases|reference|scripts)/*` and
+  `${CLAUDE_SKILL_DIR}/...` file reference in any `SKILL.md` resolves to a file on
+  disk, so a dangling dispatch/loader path fails CI (the bug class behind the
+  `code-reviewer` fix above).
 - **Gate re-derivation eval** — `test_gate_verification.py` drives `verify-gate.py`
   against fixtures: it CONFIRMS a truthful receipt (`verified`, `trustworthy`),
   CATCHES a lying one (tests/coverage `mismatch`, missing artifact flagged,
@@ -112,8 +127,9 @@ All notable changes to **Drydock**.
     by `claude -p` (`make evals-behavioral`). Uses your local Claude Code login
     and spends usage; intentionally **NOT** in CI (no API key, `temperature=1.0`
     is non-deterministic).
-- No plugin behavior change: dev tooling only, so `plugin.json` /
-  `marketplace.json` remain at `2.1.0`.
+- Version bumped to **2.2.0** in `plugin.json` and `marketplace.json` for the
+  rename and the autonomy-level terminology (user-facing naming changes); the
+  documentation, eval, and audit-fix work ships in the same release.
 
 ## [2.1.0] — 2026-06-25
 

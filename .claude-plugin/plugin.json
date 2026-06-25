@@ -1,7 +1,7 @@
 {
   "name": "drydock",
-  "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 15 specialized agents cover architecture (12-Factor + Clean Architecture), API-first contracts, tested backend/frontend, observability & telemetry, security-by-default, CI/CD + supply-chain hardening, automated testing, performance budgets, feature flags, developer experience, and per-product regulatory compliance (SOC 2 / GDPR / HIPAA / PCI-DSS) — plus security audit + VAPT (OWASP 2025 / API / LLM Top 10) — from idea to ship. The 15 agents run as real isolated subagents (auto-discovered from agents/), orchestrated via the Task tooling. Enterprise-grade by default and evidence-grounded with anti-hallucination guardrails.",
-  "version": "2.1.0",
+  "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 15 specialized agents cover architecture (12-Factor + Clean Architecture), API-first contracts, tested backend/frontend, observability & telemetry, security-by-default, CI/CD + supply-chain hardening, automated testing, performance budgets, feature flags, developer experience, and per-product regulatory compliance (SOC 2 / GDPR / HIPAA / PCI-DSS) — plus security audit + VAPT (OWASP 2025 / API / LLM Top 10) — from idea to ship. 11 of the 15 agents run as real isolated subagents (auto-discovered from agents/) orchestrated via the Task tooling; the orchestrator and three planning agents run in-context as skills. Enterprise-grade by default and evidence-grounded with anti-hallucination guardrails.",
+  "version": "2.2.0",
   "author": {
     "name": "sundarshahi",
     "email": "shahithakurisundar@gmail.com"

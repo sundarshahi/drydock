@@ -2,7 +2,7 @@
 
 ### Strategic Gates (3 total)
 
-**Gate 1 — BRD Approval** (after T1):
+**Gate 1 — Requirements Approval (BRD)** (after T1):
 
 Print the pipeline dashboard (DEFINE ● active), then the gate ceremony:
 ```

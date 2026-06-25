@@ -128,7 +128,7 @@ Drydock asks once (arrow keys + Enter). When in doubt, take **Copilot** — the 
 
 ## Execution modes
 
-Drydock routes your request to one of 12 modes. You don't pick the mode — it's inferred from what you ask for.
+Drydock routes your request to one of 12 modes (plus a **Custom** fallback when nothing matches — it shows a menu and lets you pick). You don't pick the mode — it's inferred from what you ask for.
 
 | Mode | Say something like | Agents involved |
 |---|---|---|

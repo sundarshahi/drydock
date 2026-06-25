@@ -176,10 +176,10 @@ Phases 1-4 can run in parallel — each reviews a different dimension of the sam
 
 Parallelize with **bounded foreground fan-out** — spawn up to **3 concurrent** `general-purpose` sub-tasks (Agent tool), batching in groups of 3 if there are more than 3. Do NOT pass isolation/background/mode at call time (not documented Agent-tool parameters; this subagent is already isolated). Sub-task prompts:
 
-> - Review architecture conformance following `${CLAUDE_PLUGIN_ROOT}/skills/code-reviewer/phases/01-architecture-conformance.md` checklist. Compare implementation against ADRs. Write to code-reviewer/architecture-conformance.md.
-> - Review code quality following `${CLAUDE_PLUGIN_ROOT}/skills/code-reviewer/phases/02-code-quality-analysis.md` checklist (SOLID, DRY, complexity). Write findings to code-reviewer/findings/.
-> - Review performance following `${CLAUDE_PLUGIN_ROOT}/skills/code-reviewer/phases/03-performance-review.md` checklist (N+1, caching, bundle size). Write findings to code-reviewer/findings/.
-> - Review test quality following `${CLAUDE_PLUGIN_ROOT}/skills/code-reviewer/phases/04-test-quality-review.md` checklist. Cross-reference test plan. Write to code-reviewer/metrics/.
+> - Review architecture conformance following the **Phase 1 — Architecture Conformance** section of this SKILL.md. Compare implementation against ADRs. Write to code-reviewer/architecture-conformance.md.
+> - Review code quality following the **Phase 2 — Code Quality Analysis** section of this SKILL.md (SOLID, DRY, complexity). Write findings to code-reviewer/findings/.
+> - Review performance following the **Phase 3 — Performance Review** section of this SKILL.md (N+1, caching, bundle size). Write findings to code-reviewer/findings/.
+> - Review test quality following the **Phase 4 — Test Quality Review** section of this SKILL.md. Cross-reference test plan. Write to code-reviewer/metrics/.
 
 Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it compiles all findings.
 
