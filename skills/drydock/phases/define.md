@@ -25,6 +25,9 @@ Read `.drydock.yaml` for path overrides:
 - `paths.api_contracts` → API contract location (default: `api/openapi/*.yaml`)
 - `paths.adrs` → ADR location (default: `docs/architecture/architecture-decision-records/`)
 - `paths.architecture_docs` → Architecture docs (default: `docs/architecture/`)
+- `paths.design` → UX design-system spec location (default: `docs/design/`) — used by T2b dispatch, the receipt verify, and the re-anchor below; ux-designer honors the same override
+
+When `paths.design` is set, use it (not the literal `docs/design/`) in the T2b dispatch prompt, the receipt-artifact verification, and the DEFINE→BUILD re-anchor.
 
 ## T1: Product Manager — BRD
 

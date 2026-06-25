@@ -1,6 +1,6 @@
 # SUSTAIN Phase — Dispatcher
 
-This phase manages tasks T11 (Technical Writer), T12 (Skill Maker), and T13 (Compound Learning + Final Assembly). Features PARALLEL #7.
+This phase manages tasks T11 (Technical Writer), T12 (Skill Maker), and T13 (Compound Learning + Final Assembly). Features PARALLEL #7. It also **operates the customer-success thread that LAUNCH (T16) hands off** — an ongoing operation, not a new task (see "Carry-Over from LAUNCH" below).
 
 ## Visual Output
 
@@ -29,6 +29,17 @@ Before creating SUSTAIN agent tasks, re-read from disk:
 - All receipts from `.orchestrator/receipts/` (complete pipeline history for compound learning)
 - `infrastructure/` listing, `.github/workflows/` listing
 - `docs/architecture/` listing
+- `docs/customer-success/` + `.orchestrator/receipts/T16-customer-success.json` (if LAUNCH ran) — the customer-success deliverables this phase operates (see Carry-Over below)
+
+## Carry-Over from LAUNCH: Customer Success (ongoing operation)
+
+If LAUNCH ran (a T16 receipt exists), customer-success **continues into SUSTAIN** — this is the live operation of deliverables already produced in LAUNCH, **not a re-dispatch of a new task** (so no new T-number; the phase index still lists T11–T13). Acknowledge and operate it:
+
+1. **Operate the live thread** — the onboarding/activation journey, support operations (help center, ticket workflow, SLAs), and retention/churn playbooks from `docs/customer-success/` are now in steady-state operation post-launch.
+2. **Refine the help center against the now-complete docs.** At LAUNCH the help center was bootstrapped from best-available docs (API specs/READMEs) because technical-writer (T11) had not run yet. T11 produces the full docs in THIS phase — once T11 completes, reconcile `docs/customer-success/` help-center content against the new `docs/` so the soft doc dependency is closed.
+3. **Voice-of-customer loop → product-manager.** Route prioritized post-launch feedback to `drydock/product-manager/` as the next-cycle input (customer-success does not change requirements itself — it feeds them). This is the loop that makes the pipeline iterative.
+
+This is an operational note for the orchestrator's narration and re-anchoring; it does not spawn a parallel agent wave. If a fresh customer-success agent run is genuinely needed (e.g. a Launch (GTM) standalone that now wants ongoing ops), dispatch `customer-success` per `agents/customer-success.md` and record a SUSTAIN-phase receipt.
 
 ## PARALLEL #7: T11 + T12
 

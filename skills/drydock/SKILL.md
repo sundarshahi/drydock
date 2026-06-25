@@ -248,7 +248,7 @@ Each phase loads its dispatcher file for task management and agent spawning. The
 | HARDEN | `phases/harden.md` | T4b, T5b, T6c, T6d, T6e (compliance-officer) | Wave B: parallel, skills spawn internal agents |
 | SHIP | `phases/ship.md` | T7, T8, T9b, T10 | #5, #6 parallel pairs |
 | LAUNCH | `phases/launch.md` | T14 (growth-marketer), T15 (sales-strategist), T16 (customer-success) | Parallel — GTM after Gate 3 production-ready |
-| SUSTAIN | `phases/sustain.md` | T11, T12, T13 | #7 parallel + internal |
+| SUSTAIN | `phases/sustain.md` | T11, T12, T13 (+ customer-success carry-over from LAUNCH — operated, not re-dispatched) | #7 parallel + internal |
 
 **Internal skill parallelism** — each skill spawns its own concurrent agents:
 
