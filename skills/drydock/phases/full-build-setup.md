@@ -119,7 +119,7 @@ If the bootstrap script could not locate the plugin's `skills/_shared/protocols/
 
    All agents read this file before executing. It overrides default "create from scratch" behavior.
 
-5. **Autonomy level:**
+5. **Autonomy level (MANDATORY — ask this before building; never assume a default):**
 
 ```python
 AskUserQuestion(questions=[{
@@ -183,7 +183,7 @@ Maximum parallelism with worktree isolation is the recommended default — paral
   Worktrees: {enabled|disabled}
 ```
 
-Use the cost estimation table from the visual-identity protocol to look up the range based on mode + engagement.
+Use the cost estimation table from the visual-identity protocol to look up the range based on mode + autonomy level.
 
 7. **Detect existing workspace** — if `drydock/.orchestrator/` has prior state, offer to resume or restart via AskUserQuestion.
 

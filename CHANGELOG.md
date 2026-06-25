@@ -57,6 +57,13 @@ Marketplace-submission release. The plugin is renamed to **drydock**, engagement
   15" (the orchestrator and three planning agents run in-context as skills).
   (3) The "12 execution modes" claim is reconciled with the orchestrator's
   classification table (12 routed modes **plus a Custom fallback**).
+- **Autonomy-level prompt made reliable for Full Build.** The instruction to ask
+  the user's Autonomy Level (and Parallelism) lived only in step 5 of a referenced
+  phase file and could be skipped, so a build could start without ever asking. The
+  always-loaded orchestrator `SKILL.md` now carries an explicit **MANDATORY**
+  instruction to present both `AskUserQuestion` prompts before any agent is
+  dispatched. Also fixed three stray `engagement` references the autonomy rename
+  missed (orchestrator phase index, Full Build section, and the cost-estimation note).
 - **Case-sensitive-filesystem bug in the workspace directory name.** When the
   runtime workspace was lowercased to `drydock/`, several path references were
   left as `Drydock/` — the `session-guard` hook's `SUITE_DIR`, the default

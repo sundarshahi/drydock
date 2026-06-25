@@ -65,7 +65,7 @@ Detailed procedures live in referenced files (progressive disclosure). Load each
 | Reference File | Load When |
 |----------------|-----------|
 | `reference/non-full-build-modes.md` | After classifying into a non-Full-Build mode — read the section for the selected mode (Feature, Harden, Pentest/VAPT, Compliance, Ship, Test, Review, Architect, Document, Explore, Optimize, Custom). |
-| `phases/full-build-setup.md` | When mode is Full Build — the 11-step bootstrap (workspace + protocols, brownfield detection, engagement + parallelism selection, polymath pre-flight, task-graph creation) before Phase 1. |
+| `phases/full-build-setup.md` | When mode is Full Build — the 11-step bootstrap (workspace + protocols, brownfield detection, autonomy level + parallelism selection, polymath pre-flight, task-graph creation) before Phase 1. |
 | `phases/gates.md` | Before presenting any of the 3 strategic gates — ceremonies, receipt verification, the BLOCKING production-readiness evaluation, override receipts, rework loops. |
 | `reference/task-graph.md` | When creating the task graph — two-wave dependency graph, wave/transition announcements, task tables, dynamic task generation, conditional tasks. |
 | `reference/final-summary.md` | At pipeline completion — the final summary box and cost aggregation. |
@@ -193,7 +193,13 @@ After classifying into a non-Full-Build mode, read `${CLAUDE_PLUGIN_ROOT}/skills
 
 ## Full Build Pipeline
 
-When mode is **Full Build**, read `${CLAUDE_PLUGIN_ROOT}/skills/drydock/phases/full-build-setup.md` (fallback `${CLAUDE_SKILL_DIR}/phases/full-build-setup.md`) and follow its 11-step bootstrap (workspace + protocols, brownfield detection, engagement + parallelism selection, polymath pre-flight, task-graph creation), then begin Phase 1 via `phases/define.md`. Reprint the pipeline dashboard at every phase transition and gate.
+When mode is **Full Build**, read `${CLAUDE_PLUGIN_ROOT}/skills/drydock/phases/full-build-setup.md` (fallback `${CLAUDE_SKILL_DIR}/phases/full-build-setup.md`) and follow its 11-step bootstrap (workspace + protocols, brownfield detection, autonomy level + parallelism selection, polymath pre-flight, task-graph creation), then begin Phase 1 via `phases/define.md`. Reprint the pipeline dashboard at every phase transition and gate.
+
+**MANDATORY — ask before building.** Every Full Build MUST open with two `AskUserQuestion` prompts, in order, before any agent is dispatched or any code is written:
+1. **Autonomy Level** — Autopilot / Copilot (recommended) / Checkpoint / Manual (full-build-setup.md step 5). This sets how much the pipeline involves the user and is written to `drydock/.orchestrator/settings.md`; all skills read it.
+2. **Parallelism / Performance Mode** (full-build-setup.md step 6).
+
+Never assume a default, never skip straight to building, and never collapse these into the work itself — the user picks the autonomy level first. (Bootstrap + brownfield detection in steps 1–4 run first; the two prompts are the first points where the user is asked to choose.)
 
 ## User Experience Protocol
 
