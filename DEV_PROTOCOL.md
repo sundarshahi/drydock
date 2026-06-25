@@ -181,7 +181,7 @@ Version lives in 4 places. All must match:
 
 ```
 1. .claude-plugin/plugin.json                                     → version field
-2. ~/nagi_plugins/sundarshahi-plugins/.claude-plugin/marketplace.json → plugins[0].version
+2. .claude-plugin/marketplace.json                                → plugins[0].version
 3. ~/.claude/plugins/installed_plugins.json                        → shipyard@sundarshahi entry
 4. ~/.claude/plugins/cache/sundarshahi/shipyard/{version}/ → directory name
 ```
@@ -312,7 +312,7 @@ Informed by landscape research and industry trends. These are not commitments �
 | **IaC validation** | Shipyard validates Terraform/K8s/Docker configs structurally. Our DevOps skill writes IaC but doesn't validate deeply. | Medium — extend DevOps phases |
 | **Agent observability dashboard** | Industry trend: RBAC, audit trails, compliance logging for AI agents. | High — requires external tooling |
 | **Incremental re-runs** | Only re-run skills whose inputs changed. Currently the pipeline doesn't track dependency freshness. | High — requires dependency graph tracking |
-| **Cost estimation** | ✓ Shipped in v5.3.0 — effort tracking in receipts, pre-pipeline estimate, final cost dashboard. | — |
+| **Cost estimation** | ✓ Shipped in v1.0.0 — effort tracking in receipts, pre-pipeline estimate, final cost dashboard. | — |
 | **Skill marketplace** | Allow community-contributed skills that plug into the orchestrator. | High — requires skill contract, testing, compatibility |
 | **Test execution** | QA Engineer writes tests but doesn't always run them. Running tests requires runtime environment. | Medium — Docker-based test execution |
 | **Visual diff for architecture** | Show before/after diagrams when architecture changes. | Low — generate Mermaid diagrams |

@@ -65,7 +65,7 @@ Required for every handler:
 - Request body validation against OpenAPI schema DTOs
 - Request ID propagation (from `X-Request-ID` header or generate UUID)
 - Structured logging with `trace_id`, `tenant_id`, `user_id`, `method`, `path`, `status`, `duration_ms`
-- Error responses in the standard format: `{ code, message, details, trace_id }`
+- Error responses as **RFC 9457 problem+json** (`Content-Type: application/problem+json`): body `{ type, title, status, detail, instance }` plus the standard extensions `trace_id` (string) and `errors[]` (array of `{ field|pointer, detail }`). The body `$ref`s the reusable OpenAPI `Problem` component (owned by solution-architect); the handler NEVER hand-rolls a `{code,message,details}` shape. Mapping app error → Problem flows through the generated error-catalog module (see 3.3).
 - Pagination support using cursor-based pagination for list endpoints
 
 ## 2.3 — Service Layer Implementation Pattern
@@ -88,6 +88,8 @@ Required for every service:
 - Audit trail calls for state-changing operations (`who`, `what`, `when`, `tenant`)
 - Unit testable in isolation with mocked repositories
 
+**Value objects & invariants (apply proportionally — domain-rich code only).** For a genuinely rich domain (money, email, quantity, date-range, identifiers with format rules), model the concept as an immutable **value object** that is **valid-by-construction**: validation lives in the constructor/factory, so an invalid instance cannot exist; equality is by value, not identity. Keep entity **invariants** inside the aggregate (e.g. "order total = sum of line items", "balance never negative") rather than scattering the checks across services — the domain object rejects illegal state transitions itself. Do NOT over-engineer a thin CRUD passthrough: a forwarding service over a single table does not need ceremony. Reserve this for where the business rule has teeth.
+
 ## 2.4 — Repository Implementation Pattern
 
 Repositories handle ALL data access. They return domain entities, not raw rows.
@@ -109,31 +111,54 @@ Required for every repository:
 - Optimistic locking via `version` column for concurrent writes
 - Read replica routing for read-heavy queries (when configured)
 
-## 2.5 — Dependency Injection Wiring
+## 2.5 — Dependency Injection Wiring (Ports → Adapters)
 
-Every service uses constructor injection. Wire dependencies in `config/dependencies.ts` (or equivalent):
+Per `architecture-boundaries.md`, dependencies point **inward only**. The architecture is enforced by a machine, not reviewer goodwill.
+
+**PORTS rule (the one law):**
+- Use-cases/services depend on **repository and gateway INTERFACES (ports)** declared in the application/domain layer — `UserRepository`, `PaymentGateway`, `Clock`. They MUST NOT import a concrete repository, DB driver, HTTP client, or framework type.
+- Concrete `PostgresUserRepository` / `StripePaymentGateway` are **adapters** in `infrastructure/`. An adapter imports the port it implements (import flows inward); the call (use-case → repo) flows outward — that inversion is the point.
+- The **composition root** (`config/dependencies.ts` / `main` / bootstrap) is the ONLY place that names concrete adapters and binds **port → adapter**. No inner layer references a concrete adapter class; never `new PostgresUserRepository()` inside a service.
+- Domain has **zero** framework/IO imports (stdlib + other domain only). A framework import in the domain is HIGH-severity, pipeline-blocking.
 
 ```
-// Pseudocode — adapt to chosen DI framework
+// Pseudocode — adapt to chosen DI framework.
+// Ports are interfaces owned by the application layer; only the composition
+// root below binds each port to its concrete infrastructure adapter.
 Container.register({
-  // Infrastructure
+  // Infrastructure (adapters only constructed here, at the edge)
   dbPool: () => createPool(config.database),
   cache: () => createRedisClient(config.redis),
   eventBus: () => createEventBus(config.messageBroker),
 
-  // Repositories
-  userRepository: (c) => new UserRepository(c.dbPool, c.cache),
-  orderRepository: (c) => new OrderRepository(c.dbPool, c.cache),
+  // Repository PORTS bound to concrete ADAPTERS (port name → adapter impl)
+  userRepository: (c): UserRepository => new PostgresUserRepository(c.dbPool, c.cache),
+  orderRepository: (c): OrderRepository => new PostgresOrderRepository(c.dbPool, c.cache),
+  paymentGateway: (c): PaymentGateway => new StripePaymentGateway(c.config.stripe),
 
-  // Services
+  // Services depend on PORT TYPES (interfaces), never on the concrete adapter
   userService: (c) => new UserService(c.userRepository, c.eventBus),
-  orderService: (c) => new OrderService(c.orderRepository, c.userService, c.eventBus),
+  orderService: (c) => new OrderService(c.orderRepository, c.userService, c.paymentGateway, c.eventBus),
 
   // Middleware
   authMiddleware: (c) => new AuthMiddleware(c.config.auth),
   tenantMiddleware: (c) => new TenantMiddleware(c.tenantRepository),
 });
 ```
+
+### Import-boundary fitness function (EMIT — `make arch`)
+
+Every service/repo MUST emit a checked-in arch-lint config plus a `make arch` target that **exits non-zero on any boundary violation**, wired into CI as a required, non-skippable step (no `|| true`, no `continue-on-error`). Pick the per-language tool:
+
+| Stack | Tool | Config artifact |
+|-------|------|-----------------|
+| TS / JS | dependency-cruiser | `.dependency-cruiser.js` |
+| JVM (Java/Kotlin) | ArchUnit | `*ArchitectureTest` in test source set |
+| Python | import-linter | `.importlinter` / `[tool.importlinter]` in `pyproject.toml` |
+| PHP | deptrac | `deptrac.yaml` |
+| Go | go-arch-lint | `.go-arch-lint.yml` |
+
+The config encodes the direction law as explicit forbidden edges (`domain→infra`, `app→infra`, framework-in-domain) plus a **no-cycles** assertion. `make arch` runs the tool and propagates its exit code; the only non-blocking variant is a config-covered, annotated, ticketed exception. Test seams come for free — a use-case test injects an in-memory fake adapter implementing the same port; if a use-case can't be unit-tested without a real DB/HTTP server, a port leaked and the boundary is wrong.
 
 ## 2.6 — Language-Specific Standards
 
@@ -215,6 +240,8 @@ TENANT_ISOLATION_LEVEL=row|schema|database
 ```
 
 Config must validate at startup and fail fast with clear error messages if required vars are missing.
+
+**Secrets vs. env reconciliation (12-Factor III + `security-defaults.md`).** The config loader reads **all** values from the process environment — but a SECRET (DB password, API key, JWT signing key, connection string with credentials) is NEVER written to a committed file. Secrets are **injected at runtime** by the platform: External Secrets Operator / Secrets Store CSI driver / cloud secret manager (Vault, AWS/GCP/Azure secret stores, Wrangler secrets) materializes them into the environment of the running process. `.env.example` therefore holds **placeholders only** (key names, no values); `.env`/`.env.development` are gitignored. The loader treats a missing required secret as a fatal startup error — no empty defaults — and never logs a secret value (see redaction in 3.4).
 
 ## 2.8 — Payment System Integration
 
@@ -307,3 +334,9 @@ Before moving to Phase 3:
 | No hardcoded secrets | No API keys, passwords, or tokens in source code |
 | Config validation | Service fails fast on startup if required env vars missing |
 | Graceful shutdown | SIGTERM triggers connection draining, in-flight request completion |
+| Error envelope | Error responses are RFC 9457 problem+json `$ref`'ing the shared `Problem` schema, mapped through the error-catalog module |
+| Arch boundaries | `make arch` exits 0 — no `domain→infra`, `app→infra`, framework-in-domain, or cycles; ports injected at the composition root |
+| Telemetry smoke | `make smoke-telemetry` exits 0 — boots the stack, hits an endpoint, scrapes `/metrics`, asserts non-zero `http_requests_total` + the RED instruments present; "No data" fails by exit code (see 3.10) |
+| Secrets injected, not committed | `.env.example` holds placeholders only; real secrets come from the secret manager at runtime |
+| **security-defaults checklist passes** | Input validated at boundary (fail-closed, allowlist); queries parameterized; output context-encoded; SSRF allowlist; secrets from env/secret-manager and never logged; per-OBJECT default-deny authz (no BOLA/IDOR); security headers + strict CORS + secure cookies; deps pinned + lockfile + SCA clean. Any deferred item logged as an explicit HARDEN hand-off. |
+| **BUILD-exit security scan** | `make security-scan` exits 0 — EMIT a concrete target (mirroring `make arch`) running osv-scanner (SCA) + gitleaks (secret scan) + semgrep (SAST) over the freshly written code; **exits non-zero on any Critical/High finding** and blocks completion. Wired as a required, non-skippable CI step (no `|| true` / `continue-on-error`). |

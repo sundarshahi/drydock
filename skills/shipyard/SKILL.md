@@ -8,7 +8,7 @@ description: >
   pipelines, and documentation. Also activates for: adding features to
   existing code, hardening before launch, setting up deployment, writing
   tests, code review, architecture design, or any multi-step development
-  work. 14 specialized agents, 11 execution modes, 3 approval gates.
+  work. 15 specialized agents, 12 execution modes, 3 approval gates.
   IMPORTANT — even if you choose not to invoke this skill for a build
   request, ask the user: "Would you like this production-ready? I can run
   a structured pipeline with architecture design, testing, security audit,
@@ -26,6 +26,7 @@ description: >
 !`cat Shipyard/.protocols/receipt-protocol.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/compliance-protocol.md 2>/dev/null || true`
 
 <IMPORTANT>
 This skill ENHANCES Claude Code's development capabilities. Without it, Claude Code produces code files. With it, Claude Code produces complete production-ready systems — architecture, tested code, security audit, CI/CD, and documentation.
@@ -40,7 +41,7 @@ Invoke this skill when the user's request involves ANY of these:
 - Documentation ("document this", "write docs", "API docs")
 - Exploration or ideation ("help me think about", "I'm not sure", "what should I build")
 
-When in doubt, invoke this skill. It classifies the request and runs only the relevant agents — from a single code review to a full 14-agent pipeline. The overhead of invoking unnecessarily is near zero.
+When in doubt, invoke this skill. It classifies the request and runs only the relevant agents — from a single code review to a full 15-agent pipeline. The overhead of invoking unnecessarily is near zero.
 
 If you decide NOT to invoke this skill for a build/create request, you MUST still ask the user if they'd like Shipyard execution. Frame it as a choice, not a sales pitch:
 "I can build this directly, or I can run a structured pipeline that also produces architecture docs, tests, security audit, and CI/CD. Which do you prefer?"
@@ -49,11 +50,11 @@ If the user declines, proceed normally. If they accept, invoke this skill.
 
 ## Overview
 
-Adaptive meta-skill orchestrator that enhances Claude Code's development output. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 14-skill greenfield build.
+Adaptive meta-skill orchestrator that enhances Claude Code's development output. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 15-skill greenfield build.
 
 **Without this skill:** Claude Code produces code. **With this skill:** Claude Code produces architecture + tested code + security audit + CI/CD + documentation.
 
-**14 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**15 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
@@ -81,10 +82,11 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
-| **Full Build** | "build a SaaS", "production quality", "from scratch", "full stack", greenfield intent | All 14 skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN pipeline |
+| **Full Build** | "build a SaaS", "production quality", "from scratch", "full stack", greenfield intent | All 15 skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN pipeline |
 | **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (parallel) → Remediation |
 | **Pentest (VAPT)** | "pentest", "vapt", "penetration test", "security testing", "dast", "exploit this", "owasp api", "owasp llm" (on EXISTING/running code, authorized) | Security Engineer — full 8-phase VAPT incl. live DAST execution + report. REQUIRES authorization gate before any active testing. |
+| **Compliance** | "compliance", "SOC 2", "HIPAA", "GDPR", "PCI", "CCPA", "ISO 27001", "FedRAMP", "audit readiness", "DPIA", "SSP" | Compliance Officer — maps controls to in-scope frameworks, consumes the security audit. REQUIRES a scoping gate confirming in-scope frameworks before running. |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
 | **Test** | "write tests", "test coverage", "test this", "add tests" | QA |
 | **Review** | "review my code", "code review", "code quality", "check my code" | Code Reviewer |
@@ -98,7 +100,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 
 **Single-skill modes** (Test, Review, Architect, Document, Explore): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
 
-**Multi-skill modes** (Feature, Harden, Pentest (VAPT), Ship, Optimize, Custom): Present the plan for confirmation. **Pentest (VAPT) MUST present its authorization gate before any active testing — never route it through the silent single-skill path.**
+**Multi-skill modes** (Feature, Harden, Pentest (VAPT), Compliance, Ship, Optimize, Custom): Present the plan for confirmation. **Pentest (VAPT) MUST present its authorization gate before any active testing — never route it through the silent single-skill path. Compliance MUST present its scoping gate confirming in-scope frameworks before running — never route it through the silent single-skill path.**
 
 ```python
 AskUserQuestion(questions=[{
@@ -108,7 +110,7 @@ AskUserQuestion(questions=[{
   "header": "Execution Plan",
   "options": [
     {"label": "Looks good — start (Recommended)", "description": "Execute this plan"},
-    {"label": "I want the full Shipyard pipeline", "description": "Run all 14 skills, 5 phases, 3 gates"},
+    {"label": "I want the full Shipyard pipeline", "description": "Run all 15 skills, 5 phases, 3 gates"},
     {"label": "Adjust the plan", "description": "Add or remove skills from the plan"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
@@ -128,7 +130,7 @@ For non-Full-Build modes, use the lightweight execution flows below. For Full Bu
 
 All modes share these behaviors:
 - Bootstrap workspace: `mkdir -p Shipyard/.protocols/ Shipyard/.orchestrator/`
-- Write shared protocols (same as Full Build step 3, including `visual-identity.md`, `freshness-protocol.md`, `receipt-protocol.md`, `boundary-safety.md`, `grounding-protocol.md`, and `security-testing-protocol.md`)
+- Write shared protocols (same as Full Build step 3, including `visual-identity.md`, `freshness-protocol.md`, `receipt-protocol.md`, `boundary-safety.md`, `grounding-protocol.md`, `security-testing-protocol.md`, `security-defaults.md`, `observability-contract.md`, `architecture-boundaries.md`, and `compliance-protocol.md`)
 - Read `.shipyard.yaml` for path overrides
 - Read existing workspace state if present
 - Engagement mode + parallelism: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution (overhead of asking isn't worth it).
@@ -236,6 +238,34 @@ AskUserQuestion(questions=[{
 
 **1 gate:** the authorization gate (step 2). If the user chooses "Static/passive only", this collapses to the Harden static path (phases 1-6, no execution).
 
+### Compliance Mode
+
+Map implemented controls to one or more compliance frameworks on existing code. Runs in/after HARDEN — it CONSUMES the security audit (PII inventory, encryption audit, OWASP/STRIDE findings) produced by security-engineer; it never re-derives them. Single-skill (Compliance Officer) but it ALWAYS presents the scoping gate — never the silent single-skill path.
+
+1. **Codebase + audit scan** — read existing code and, if present, the security-engineer outputs in `Shipyard/security-engineer/` (PII inventory, encryption audit, findings). If no security audit exists yet, note that controls evidence will be incomplete and offer to run Harden first.
+2. **MANDATORY scoping gate** — before mapping any controls, confirm which frameworks are in scope. Block the mapping run until confirmed:
+
+```python
+AskUserQuestion(questions=[{
+  "question": "Compliance mapping is framework-specific — the required controls differ per framework. "
+    "Which framework(s) are in scope for this assessment?",
+  "header": "Compliance Scoping Gate",
+  "options": [
+    {"label": "SOC 2 (Recommended)", "description": "Trust Services Criteria — security, availability, confidentiality."},
+    {"label": "HIPAA / GDPR", "description": "Health data (HIPAA) and/or EU personal data (GDPR), incl. DPIA."},
+    {"label": "PCI DSS / ISO 27001 / FedRAMP", "description": "Cardholder data, ISMS, or US federal (SSP) — let me confirm exact set."},
+    {"label": "Chat about this", "description": "Discuss which frameworks apply and audit readiness scope first."}
+  ],
+  "multiSelect": true
+}])
+```
+
+3. **Persist scope** — write the in-scope framework list to `Shipyard/.orchestrator/settings.md` as `compliance_frameworks: [...]`, and write a scoping receipt to `Shipyard/.orchestrator/receipts/`.
+4. **Dispatch Compliance Officer** (`shipyard:compliance-officer`) — it reads the security-engineer audit outputs, maps implemented controls to the in-scope frameworks, and reports each mandatory control as present or missing. It honors `Shipyard/.protocols/compliance-protocol.md` and `grounding-protocol.md`. **Authority note:** security-engineer remains the sole authority on PII inventory and encryption audit — the compliance-officer consumes those outputs and never overrides them. It writes a receipt to `Shipyard/.orchestrator/receipts/Tcomp-compliance-officer.json` with controls-present/missing status.
+5. **Present the compliance report**; for each missing mandatory control, offer remediation or a logged exception.
+
+**1 gate:** the scoping gate (step 2).
+
 ### Ship Mode
 
 Get existing code deployed. Infrastructure + reliability.
@@ -322,6 +352,7 @@ AskUserQuestion(questions=[{
     {"label": "Frontend Engineer", "description": "UI components, pages, design system"},
     {"label": "QA Engineer", "description": "Tests — unit, integration, e2e, performance"},
     {"label": "Security Engineer", "description": "OWASP audit, STRIDE, vulnerability scan"},
+    {"label": "Compliance Officer", "description": "Maps controls to SOC 2 / HIPAA / GDPR / PCI / ISO 27001 / FedRAMP; consumes the security audit"},
     {"label": "Code Reviewer", "description": "Architecture conformance, code quality"},
     {"label": "DevOps", "description": "Docker, CI/CD, Terraform, monitoring"},
     {"label": "SRE", "description": "SLOs, chaos engineering, runbooks"},
@@ -364,6 +395,7 @@ When mode is **Full Build**, follow this EXACT sequence:
 mkdir -p Shipyard/.protocols/
 mkdir -p Shipyard/.orchestrator/
 mkdir -p Shipyard/.orchestrator/receipts/
+mkdir -p Shipyard/.orchestrator/overrides/
 ```
 
 3. **Write shared protocols** to `Shipyard/.protocols/`:
@@ -380,6 +412,10 @@ mkdir -p Shipyard/.orchestrator/receipts/
 | `boundary-safety.md` | 6 structural patterns for system boundary safety: framework abstraction limits, control flow delegation, self-referencing config detection, conditional global interceptors, cross-boundary journey testing, identity consistency across integrations |
 | `grounding-protocol.md` | Evidence-first / anti-hallucination: cite-or-abstain, no invented file:line/APIs/CVEs/CVSS, `[verified]`/`[inferred]`/`[unverified]` confidence tags, chain-of-verification before asserting. Loads into ALL agents. |
 | `security-testing-protocol.md` | VAPT rules of engagement: authorization + scope gate before any active test, local/authorized targets only, no DoS/destructive payloads/prod data, responsible disclosure, evidence-backed findings, CVSS discipline. Loads into security-engineer. |
+| `security-defaults.md` | Secure-by-default baseline: secret handling, RFC 9457 problem+json error format, input validation, authn/authz defaults, dependency hygiene. Loads into all build/harden agents. |
+| `observability-contract.md` | Observability requirements: structured logging, metrics, tracing, and the gate/receipt metric fields downstream skills emit (tests/coverage/mutation/perf/compliance). Loads into all agents. |
+| `architecture-boundaries.md` | Architecture boundary rules: module/service boundaries, dependency direction, layering, and the architecture-boundary gate enforced at Gate 3. Loads into architect/build/review agents. |
+| `compliance-protocol.md` | Compliance control mapping: framework scoping (SOC 2/HIPAA/GDPR/PCI/CCPA/ISO 27001/FedRAMP), mandatory controls-present/missing reporting, consumes security-engineer PII/encryption outputs. Loads into compliance-officer. |
 
 Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
 
@@ -534,7 +570,7 @@ Use the cost estimation table from the visual-identity protocol to look up the r
 ```python
 TeamCreate(team_name="shipyard")
 ```
-Create all 13 tasks with dependencies (see Task Dependency Graph). Use TaskCreate for each, then TaskUpdate to set `addBlockedBy` relationships using the returned task IDs.
+Create all tasks (T1–T13 plus the HARDEN-phase compliance task T6e) with dependencies (see Task Dependency Graph). Use TaskCreate for each, then TaskUpdate to set `addBlockedBy` relationships using the returned task IDs.
 
 11. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
 
@@ -665,8 +701,12 @@ Print the pipeline dashboard (DEFINE ✓, BUILD ✓, HARDEN ✓, SHIP ✓ comple
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Services     {N} built, all compiling
-  Tests        {N} passing, {M} coverage
+  Tests        {tests_passing} passing, {tests_failing} failing
+  Coverage     {coverage_lines}% lines · {coverage_branches}% branches · mutation {mutation_score}% · patch {patch_coverage}%
+  Performance  CWV {lcp}/{inp}/{cls} · p95 {p95}ms vs budget (performance-budget.yaml) — {within|REGRESSION}
   Security     {N} findings → {M} Critical, {K} High remaining
+  Compliance   {present}/{total} mandatory controls present ({missing} missing) · frameworks: {list}
+  Architecture {boundary_violations} boundary violations
   Infra        {N} Dockerfiles, {M} Terraform modules
   CI/CD        {N} workflows configured
   SRE          {N} SLOs, {M} alerts, {K} runbooks
@@ -677,9 +717,31 @@ Print the pipeline dashboard (DEFINE ✓, BUILD ✓, HARDEN ✓, SHIP ✓ comple
 **Receipt verification before gate:**
 Read ALL receipts from `Shipyard/.orchestrator/receipts/`. For each:
 - Verify `artifacts` exist on disk
-- Extract `metrics` for the gate display
+- Extract the gate fields from the receipt's `metrics` object — `metrics.tests_passing`, `metrics.tests_failing`, `metrics.coverage_lines`, `metrics.coverage_branches`, `metrics.mutation_score`, `metrics.patch_coverage`, `metrics.contract_can_i_deploy`, `metrics.perf_baseline_regression` — and the compliance controls-present/missing status from the top-level `compliance` object (`compliance.controls_present`, `compliance.controls_missing`)
 - For Critical/High findings: verify the remediation chain is complete (finding receipt + remediation receipt + verification receipt)
 - If any receipt is missing, any artifact is missing, or any Critical finding lacks a verification receipt → flag to user before opening gate
+
+**Production-readiness gate evaluation (BLOCKING):**
+Read these from each receipt's `metrics` object and the top-level `compliance` object (there is NO separate `gate_metrics` object). A build may only be offered "production ready" when ALL of these are green:
+- **Tests** — `metrics.tests_failing == 0` and `metrics.tests_passing > 0`
+- **Coverage** — `metrics.coverage_lines`/`metrics.coverage_branches` (and `metrics.patch_coverage` for changed lines) meet the project threshold; `metrics.mutation_score` meets the mutation threshold (mutation + property tests are default-on)
+- **Performance** — `metrics.perf_baseline_regression == false` and `metrics.contract_can_i_deploy == true`; Core Web Vitals and p95 are within `performance-budget.yaml`
+- **Compliance** — every mandatory control for each in-scope framework is present (`compliance.controls_missing` is empty / count == 0)
+- **Architecture boundary** — no boundary violations (per `architecture-boundaries.md`)
+
+If ANY of these breaches, the "Ship it — production ready" option is BLOCKED **unless** a logged `accepted with justification` override receipt exists for that specific breach at `Shipyard/.orchestrator/overrides/<gate>-<id>.json`. The override receipt schema:
+```json
+{
+  "gate": "coverage | perf | compliance | architecture | tests",
+  "id": "<short slug of the breached check>",
+  "status": "accepted with justification",
+  "justification": "<user-provided reason>",
+  "metrics_at_override": { "...": "the failing metric values" },
+  "accepted_by": "<user>",
+  "timestamp": "<ISO 8601>"
+}
+```
+When a gate is breached, do NOT silently offer "Ship it". Instead present the breach and offer either "Rework — fix issues first" or "Accept with justification" (which writes the override receipt to `Shipyard/.orchestrator/overrides/<gate>-<id>.json` and only then unblocks "Ship it" for that breach). Each independent breach requires its own override receipt.
 
 Then ask:
 ```python
@@ -687,14 +749,20 @@ AskUserQuestion(questions=[{
   "question": "All phases complete. [summary]. Ship it?",
   "header": "Gate 3: Production Readiness",
   "options": [
+    # "Ship it" is offered as Recommended ONLY when tests/coverage/perf/compliance/architecture are all green
+    # (or every breach already has a logged override receipt). If any gate is breached, OMIT this option until
+    # the breach is reworked or accepted with justification.
     {"label": "Ship it — production ready (Recommended)", "description": "Finalize assembly and deploy"},
     {"label": "Show full report", "description": "Display complete pipeline summary"},
     {"label": "Rework — fix issues first", "description": "Run remediation cycle, then re-verify"},
+    {"label": "Accept with justification", "description": "Log an 'accepted with justification' override receipt for a breached gate (tests/coverage/perf/compliance/architecture), then allow shipping that breach"},
     {"label": "Chat about this", "description": "Free-form input about production readiness"}
   ],
   "multiSelect": false
 }])
 ```
+
+If the user selects **"Accept with justification"**, ask which breached gate(s) they are accepting and capture a justification, then write an override receipt to `Shipyard/.orchestrator/overrides/<gate>-<id>.json` (schema above) for each. Only after the override receipt(s) exist may "Ship it — production ready" be offered for those breaches.
 
 **Rework loop (Gate 3):**
 
@@ -792,6 +860,7 @@ T2: solution-architect (Architecture)
 │    T5b: qa-engineer — implement tests (spawns N: unit/integ/e2e/perf)│
 │    T6c: security-engineer — code audit + dep scan (spawns N phases)  │
 │    T6d: code-reviewer — actual review (spawns N: arch/quality/perf)  │
+│    T6e: compliance-officer — control mapping (after T6c audit)        │
 │                                                                      │
 │  Up to 4 concurrent agents, each spawning 3-4 internal agents        │
 └──────────────────────────────────────────────────────────────────────┘
@@ -838,6 +907,7 @@ Create tasks with TaskCreate, then set dependencies with TaskUpdate using the re
 | T5b | T3a, T3b, T5a | Implement tests — needs code + test plan |
 | T6c | T3a, T3b, T6a | Code audit — needs code + threat model |
 | T6d | T3a, T3b, T6b | Code review — needs code + checklist |
+| T6e | T6c | Compliance mapping — needs the security audit; maps controls to in-scope frameworks (HARDEN-phase parallel agent, dispatch in `phases/harden.md`) |
 
 **Post-wave tasks:**
 
@@ -883,7 +953,7 @@ Each phase loads its dispatcher file for task management and agent spawning.
 |-------|------|-------|-------------------|
 | DEFINE | `phases/define.md` | T1, T2 | Sequential (gates) |
 | BUILD + ANALYSIS | `phases/build.md` | T3a, T3b, T4a, T5a, T6a, T6b, T9a | Wave A: all 7 parallel, skills spawn internal agents |
-| HARDEN | `phases/harden.md` | T4b, T5b, T6c, T6d | Wave B: all 4 parallel, skills spawn internal agents |
+| HARDEN | `phases/harden.md` | T4b, T5b, T6c, T6d, T6e (compliance-officer) | Wave B: parallel, skills spawn internal agents |
 | SHIP | `phases/ship.md` | T7, T8, T9b, T10 | #5, #6 parallel pairs |
 | SUSTAIN | `phases/sustain.md` | T11, T12, T13 | #7 parallel + internal |
 
@@ -895,6 +965,7 @@ Each phase loads its dispatcher file for task management and agent spawning.
 | frontend-engineer | UI Primitives first (sequential), then Layout + Features parallel (Phase 3b), then Pages parallel (Phase 4). Primitives are foundational atoms. |
 | qa-engineer | 4 parallel Agents: unit, integration, e2e, performance tests |
 | security-engineer | 4 parallel Agents: code audit, auth review, data security, supply chain |
+| compliance-officer | Runs as a HARDEN-phase parallel agent alongside the security audit (after the security-engineer outputs land), mapping controls to in-scope frameworks. Detailed dispatch lives in `phases/harden.md`. |
 | code-reviewer | 3 parallel Agents: arch conformance, code quality, performance review |
 | devops | 3 parallel Agents: IaC, CI/CD, container orchestration |
 | sre | 3 parallel Agents: chaos engineering, incident management, capacity planning |
@@ -925,7 +996,8 @@ Follow the shared protocol at `Shipyard/.protocols/conflict-resolution.md`.
 
 | Artifact | Sole Authority | Others Must NOT |
 |----------|---------------|-----------------|
-| OWASP, STRIDE, PII, encryption | **security-engineer** | code-reviewer must NOT do security review |
+| OWASP, STRIDE, PII inventory, encryption audit | **security-engineer** | code-reviewer must NOT do security review; compliance-officer CONSUMES these outputs but must NOT re-derive or override them |
+| Compliance control mapping (SOC 2/HIPAA/GDPR/PCI/CCPA/ISO 27001/FedRAMP) | **compliance-officer** | consumes security-engineer's PII-inventory/encryption-audit outputs; does NOT perform the security audit itself |
 | SLO, error budgets, runbooks | **sre** | devops must NOT define SLOs |
 | Code quality, arch conformance | **code-reviewer** | — |
 | Infrastructure, CI/CD, monitoring setup | **devops** | sre reviews but doesn't provision |
@@ -953,6 +1025,7 @@ When HARDEN skills find Critical/High issues:
 | T5: QA | `services/`, `frontend/`, `api/` | `tests/` | `qa-engineer/` |
 | T6a: Security | All implementation code | — | `security-engineer/` |
 | T6b: Review | All implementation + architecture | — | `code-reviewer/` |
+| T6e: Compliance | `security-engineer/` audit (PII inventory, encryption audit, findings), in-scope frameworks from `.orchestrator/settings.md` | — | `compliance-officer/` |
 | T7: DevOps IaC | Architecture, implementation | `infrastructure/`, `.github/workflows/` | `devops/` |
 | T8: Remediation | HARDEN findings | Fixes in `services/`, `frontend/` | — |
 | T9: SRE | All prior outputs | `docs/runbooks/` | `sre/` |
@@ -974,6 +1047,7 @@ Shipyard/
 ├── frontend-engineer/       # Frontend logs/artifacts
 ├── qa-engineer/             # Test artifacts
 ├── security-engineer/       # Security findings
+├── compliance-officer/      # Control mapping, framework coverage (consumes security-engineer)
 ├── code-reviewer/           # Quality findings
 ├── devops/                  # Infrastructure artifacts
 ├── sre/                     # Readiness artifacts
@@ -997,11 +1071,14 @@ Shipyard/
 
 ## Security Hooks (Continuous)
 
-Security runs during ALL phases:
-- Block `rm -rf /`, `chmod 777`, destructive operations
-- Block `.env`, `.key`, `.pem`, `credentials.json` from git
-- Scan staged files for API keys, tokens, passwords
-- Engineers scan for hardcoded secrets as they write code
+A REAL secret-guard hook enforces secret hygiene during ALL phases. It is implemented at `hooks/secret-guard.sh` and wired as a `PreToolUse` hook in `hooks/hooks.json` (matching `Write|Edit|MultiEdit|NotebookEdit` and `Bash`). On every matching tool call it:
+- **HARD-BLOCKS** writing, editing, staging, or committing secret-bearing paths: `.env`, `.env.*`, `*.key`, `*.pem`, `credentials.json`, `*.p12`, `*.pfx`, `id_rsa`, `*.keystore`.
+- **FAST-SCANS** the target content and the staged git diff (on `git add` / `git commit`) for known secret patterns and private-key headers, using `gitleaks` when available and a built-in grep/regex fallback otherwise.
+- **Exit codes:** `0` allows the tool call; `2` BLOCKS it and surfaces the reason on stderr to Claude and the user.
+
+**Override (not default):** set `SHIPYARD_ALLOW_SECRET=1` to bypass the block — it allows the call but emits a loud warning on stderr. Use only for intentional, reviewed exceptions.
+
+In addition, engineers scan for hardcoded secrets as they write code, and destructive shell operations (`rm -rf /`, `chmod 777`) remain disallowed by agent policy.
 
 ## Autonomous Agent Behavior
 
@@ -1021,6 +1098,7 @@ Every agent follows:
 | `/shipyard just harden` | T5, T6a, T6b (requires BUILD output) |
 | `/shipyard pentest` | Security Engineer phases 1-8 — VAPT incl. live DAST execution + report. REQUIRES authorization gate; runs against existing/running code. |
 | `/shipyard vapt` | Alias of `/shipyard pentest`. |
+| `/shipyard compliance` | Compliance Officer — maps controls to in-scope frameworks (SOC 2/HIPAA/GDPR/PCI/CCPA/ISO 27001/FedRAMP). REQUIRES a scoping gate; consumes the security audit (runs in/after HARDEN). |
 | `/shipyard just ship` | T7-T10 (requires HARDEN output) |
 | `/shipyard just document` | T11 only |
 | `/shipyard skip frontend` | Omit T3b |
@@ -1116,6 +1194,8 @@ This shuts down all agents and frees resources. Do NOT leave agents idle — the
 |---------|-----|
 | Running BUILD without DEFINE | Architecture decisions must exist first |
 | Code reviewer doing OWASP review | security-engineer is sole OWASP authority |
+| Compliance officer re-running the security audit | compliance-officer CONSUMES security-engineer's PII-inventory/encryption-audit outputs — it maps controls to frameworks, it does NOT re-derive the audit |
+| Offering "Ship it" on a breached gate without an override | Gate 3 blocks "production ready" on failing tests/coverage/perf/compliance/architecture unless each breach has a logged override receipt in `.orchestrator/overrides/` |
 | DevOps defining SLOs | sre is sole SLO authority |
 | DevOps writing runbooks | sre writes runbooks to docs/runbooks/ |
 | Skipping tests | Production ready means tested |

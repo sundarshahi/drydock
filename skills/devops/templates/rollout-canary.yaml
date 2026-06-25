@@ -1,0 +1,84 @@
+# infrastructure/kubernetes/<SERVICE>/rollout.yaml
+# Argo Rollouts progressive delivery. The AnalysisTemplate CONSUMES SRE's single source of
+# truth — Shipyard/sre/slo/burn-rate-query.yaml — copying its burn_rate_query / latency_query
+# (EXACT observability-contract names) and its fail_when / latency_fail_when thresholds verbatim.
+# Canary analysis FAIL -> automatic abort + rollback. There is NO orphan rollback.sh.
+# SRE owns the queries + thresholds; devops only WIRES them into failureCondition. Never re-derive.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: <SERVICE>
+  namespace: <NAMESPACE>
+spec:
+  replicas: <REPLICAS>
+  selector:
+    matchLabels: { app: <SERVICE> }
+  template:
+    metadata:
+      labels: { app: <SERVICE> }
+    spec:
+      containers:
+        - name: <SERVICE>
+          image: <IMAGE>@<DIGEST>   # immutable digest — set by cd-production, never a tag
+          ports: [{ name: http, containerPort: <PORT> }]
+          # /metrics is scraped by Prometheus (see ServiceMonitor in observability stack)
+  strategy:
+    canary:
+      # Analysis runs at each step; a failing AnalysisRun aborts the Rollout and rolls back.
+      analysis:
+        templates:
+          - templateName: <SERVICE>-canary-analysis
+        startingStep: 1
+        args:
+          - { name: service, value: <SERVICE> }
+          - { name: namespace, value: <NAMESPACE> }
+      steps:
+        - setWeight: 10
+        - pause: { duration: 5m }
+        - setWeight: 25
+        - pause: { duration: 5m }
+        - setWeight: 50
+        - pause: { duration: 10m }
+        - setWeight: 100
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: <SERVICE>-canary-analysis
+  namespace: <NAMESPACE>
+spec:
+  args:
+    - name: service
+    - name: namespace
+  metrics:
+    # ── Fast-burn guard: COPIED from SRE's Shipyard/sre/slo/burn-rate-query.yaml `burn_rate_query`.
+    # failureCondition mirrors SRE's `fail_when: "> 14.4"` (>14.4x burn over 2m → abort).
+    # failureLimit:0 → first breach aborts the Rollout. Never re-derive the threshold here.
+    - name: burn-rate
+      interval: 1m
+      count: 5
+      failureCondition: result[0] > 14.4   # == SRE fail_when; SRE-owned, do not edit
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: http://prometheus.<NAMESPACE>.svc:9090
+          query: |
+            (
+              sum(rate(http_requests_total{status_class="5xx", canary="true"}[2m]))
+              / sum(rate(http_requests_total{canary="true"}[2m]))
+            ) / (1 - 0.999)
+    # ── p99 latency: COPIED from SRE's burn-rate-query.yaml `latency_query`.
+    # failureCondition mirrors SRE's `latency_fail_when: "> 1.2"` (p99 seconds, from the budget).
+    - name: latency-p99
+      interval: 1m
+      count: 5
+      failureCondition: result[0] > 1.2   # == SRE latency_fail_when (seconds); SRE-owned
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: http://prometheus.<NAMESPACE>.svc:9090
+          query: |
+            histogram_quantile(0.99,
+              sum by (le) (rate(http_request_duration_seconds_bucket{canary="true"}[2m]))
+            )

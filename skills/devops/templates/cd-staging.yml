@@ -1,0 +1,79 @@
+# .github/workflows/cd-staging.yml — auto-deploy to staging on merge to default branch.
+# Keyless OIDC (no static cloud creds). Runs qa's tests via workflow_call (compose, don't clobber).
+# k6 baseline compare BLOCKS the deploy on a perf regression beyond the budget tolerance.
+name: cd-staging
+
+on:
+  push:
+    branches: ["<DEFAULT_BRANCH>"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-staging   # one staging deploy at a time
+  cancel-in-progress: false
+
+jobs:
+  # ── Compose qa's checked-in suite via workflow_call — DO NOT duplicate its steps here. ──
+  qa-suite:
+    uses: ./.github/workflows/test.yml   # owned by qa-engineer; reused, not clobbered
+    secrets: inherit
+
+  build-push:
+    needs: qa-suite
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write      # keyless OIDC — assume the cloud role, no long-lived secret
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Assume cloud role via OIDC (trust defined in infrastructure/security/iam/)
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: <OIDC_ROLE_ARN>
+          aws-region: <AWS_REGION>
+      - uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
+      - name: Build + push (immutable — tag by digest, never `latest`)
+        id: build
+        uses: docker/build-push-action@2cdde0f1ad4128717365b9d5a91da12a5e7d77c4 # v6.14.0
+        with:
+          context: .
+          file: services/<SERVICE>/Dockerfile
+          push: true
+          tags: <IMAGE>:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with: { role-to-assume: <OIDC_ROLE_ARN>, aws-region: <AWS_REGION> }
+      - name: Deploy immutable digest to staging
+        run: ./scripts/deploy.sh --env staging --image "<IMAGE>@${{ needs.build-push.outputs.digest }}"
+      - name: Smoke test (health + critical path)
+        run: ./scripts/smoke-test.sh --env staging
+
+  # ── Perf gate: k6 p95/p99 vs committed baseline. BLOCKS promotion beyond +10% / budget. ──
+  perf-baseline:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - run: make setup
+      - name: k6 compare-baseline (reads thresholds from performance-budget.yaml)
+        run: |
+          set -euo pipefail
+          # compare-baseline.js asserts http_request_duration_seconds p95/p99 against the
+          # per-scenario tests/performance/baselines/<scenario>.baseline.json AND
+          # performance-budget.yaml; fails beyond +10%. Runner + baselines emitted by qa-engineer.
+          node tests/performance/compare-baseline.js --env staging --tolerance 0.10

@@ -8,6 +8,13 @@ Design production ML infrastructure — model serving (batch and real-time), mod
 
 Read Phase 1 audit from `analysis/system-audit.md` for ML model inventory. Read Phase 4 pipeline from `data-pipeline/architecture.md` for data flow integration points.
 
+## Security Defaults (this phase generates model-serving code — obey `security-defaults.md`)
+
+- **Model output is untrusted.** Serving responses and shadow-comparison logs are validated/typed before any downstream sink; never `eval`/exec a prediction or interpolate it raw into SQL/DOM/shell. Inference inputs are validated at the trust boundary (allowlist, fail-closed).
+- **Per-object authz on serving endpoints.** A real-time inference/feature-store request authorizes the caller for that specific object server-side from the session/token — never trust a `user_id`/`tenant_id` in the request body (no BOLA/IDOR on feature lookups).
+- **No secrets in serving/retraining configs.** Registry, GPU, and warehouse credentials from env/secret-manager; never logged. Security headers + strict CORS + secure cookies on any HTTP serving surface.
+- **Gate model-triggered tool-calls and SSRF-allowlist** any model/user-influenced outbound (e.g. an LLM-serving endpoint that calls tools or fetches retrieval sources); keep the prompt-injection trust boundary for any LLM in the serving path.
+
 ## Workflow
 
 ### Step 1: Model Registry & Versioning
@@ -90,9 +97,10 @@ Before proceeding to Phase 6, verify:
 - [ ] Monitoring includes data drift, model performance, and operational health
 - [ ] Retraining pipeline has automated triggers and promotion gates
 - [ ] Compute optimization opportunities quantified with cost impact
+- [ ] `security-defaults checklist passes` — model output treated as untrusted, inference inputs validated fail-closed, per-object default-deny authz on serving/feature endpoints, secrets from env/secret-manager, model-triggered tool-calls gated + SSRF allowlist
 
 > **GATE: Present ML infrastructure design. Wait for user approval before proceeding.**
 
 ## Quality Bar
 
-Every model in production must have monitoring, drift detection, and a rollback procedure. "The model is deployed" is not acceptable — "Model rec-engine-v3.1.0 serves at p99 < 85ms, PSI monitored hourly with retraining at PSI > 0.25, canary validates on 5% traffic for 24h before full rollout" is acceptable.
+Every model in production must have monitoring, drift detection, and a rollback procedure, and `security-defaults checklist passes`. "The model is deployed" is not acceptable — "Model rec-engine-v3.1.0 serves at p99 < 85ms, PSI monitored hourly with retraining at PSI > 0.25, canary validates on 5% traffic for 24h before full rollout" is acceptable. A deferred security item is logged as an explicit HARDEN hand-off, never silently skipped.

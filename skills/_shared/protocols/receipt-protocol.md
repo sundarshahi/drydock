@@ -27,7 +27,21 @@ Every agent writes a JSON receipt as its LAST action before `TaskUpdate(status="
     "findings_critical": 2,
     "findings_high": 5,
     "findings_medium": 12,
-    "findings_low": 8
+    "findings_low": 8,
+    "tests_passing": 412,
+    "tests_failing": 0,
+    "coverage_lines": 87.4,
+    "coverage_branches": 81.2,
+    "mutation_score": 76.0,
+    "patch_coverage": 92.5,
+    "contract_can_i_deploy": true,
+    "perf_baseline_regression": false
+  },
+  "compliance": {
+    "frameworks_in_scope": ["SOC2", "GDPR"],
+    "controls_required": 24,
+    "controls_present": 24,
+    "controls_missing": []
   },
   "effort": {
     "files_read": 47,
@@ -47,7 +61,8 @@ Every agent writes a JSON receipt as its LAST action before `TaskUpdate(status="
 | `phase` | string | Pipeline phase (DEFINE, BUILD, HARDEN, SHIP, SUSTAIN) |
 | `status` | string | Always `"complete"` — only write receipt on success |
 | `artifacts` | string[] | Every file the agent created or modified. Each path MUST exist on disk at time of writing. |
-| `metrics` | object | Key-value pairs with concrete numbers. At least one metric required. No empty objects. |
+| `metrics` | object | Key-value pairs with concrete numbers. At least one metric required. No empty objects. This object ALSO carries the machine-readable gate evidence the orchestrator VERIFIES rather than trusts — emit every gate field the task can measure directly inside `metrics`: `tests_passing` (int), `tests_failing` (int), `coverage_lines` (float %), `coverage_branches` (float %), `mutation_score` (float %), `patch_coverage` (float %), `contract_can_i_deploy` (bool), `perf_baseline_regression` (bool — true = regressed past budget). These gate fields are required on any task that runs tests, contracts, or perf checks. |
+| `compliance` | object | Compliance gate evidence: `frameworks_in_scope` (string[]), `controls_required` (int), `controls_present` (int), `controls_missing` (string[] — control IDs with no evidence). Required on compliance-officer tasks and any task asserting a compliance control. An empty `controls_missing` array means all required controls are present. |
 | `effort` | object | Tracking: `files_read` (int), `files_written` (int), `tool_calls` (int). Count your actual tool invocations during this task. |
 | `verification` | string | One-line summary of what the agent checked to confirm its work is correct. |
 
@@ -109,6 +124,7 @@ At every phase transition and before every gate, the orchestrator:
 4. **If receipt missing** — the task did not complete properly. Investigate before proceeding.
 5. **If artifacts missing** — the agent claimed to produce files it didn't. Investigate before proceeding.
 6. **Extracts metrics** for gate ceremony display — users see verified data, not agent claims
+7. **Reads the gate fields inside `metrics` and the top-level `compliance` object** to enforce gates from data, not prose. `production-ready` is BLOCKED when `metrics.tests_failing > 0`, `metrics.coverage_lines`/`metrics.coverage_branches`/`metrics.mutation_score`/`metrics.patch_coverage` are below budget, `metrics.perf_baseline_regression` is true, `metrics.contract_can_i_deploy` is false, `compliance.controls_missing` is non-empty, or an architecture-boundary violation is present — UNLESS a logged "accepted with justification" override receipt exists for that specific gate at `Shipyard/.orchestrator/overrides/<gate>-<id>.json`.
 
 ---
 

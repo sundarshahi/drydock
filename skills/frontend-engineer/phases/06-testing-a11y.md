@@ -48,22 +48,26 @@ Produce E2E tests in `frontend/tests/e2e/` and `frontend/playwright.config.ts`.
 
 Produce `Shipyard/frontend-engineer/docs/a11y-audit.md`.
 
-### Step 4: Performance Budget (Core Web Vitals)
+### Step 4: Performance Budget (Core Web Vitals) — thresholds READ FROM the shared budget artifact
 
-Define and enforce via Lighthouse CI:
+**Do NOT hardcode 2.5s / 200KB.** The single source of truth is `docs/architecture/performance-budget.yaml` (owned/emitted by solution-architect):
 
-| Metric | Target | Tool |
-|--------|--------|------|
-| **LCP** | < 2.5s | Lighthouse CI |
-| **INP** | < 200ms | Lighthouse CI |
-| **CLS** | < 0.1 | Lighthouse CI |
-| **TTFB** | < 800ms | Lighthouse CI |
-| **Initial bundle** | < 200 KB gzip | @next/bundle-analyzer |
-| **Per-route JS** | < 50 KB gzip | @next/bundle-analyzer |
+```yaml
+web_vitals: { lcp_ms, inp_ms, cls }
+bundle:     { <entry>: max_kb }
+api:        <route>: { p95_ms, p99_ms, throughput_rps, error_rate_pct }
+```
 
-Configure `lighthouserc.json` with minScore assertions (performance 0.9, accessibility 0.95, best-practices 0.9) and numeric thresholds for LCP, TTI, CLS.
+EMIT the two CI gate configs whose thresholds are **derived from that file**, not typed in by hand:
 
-Produce `frontend/lighthouserc.json` and `Shipyard/frontend-engineer/docs/performance-budget.md`.
+- **`frontend/lighthouserc.json`** — Lighthouse CI assertions for LCP / INP / CLS read from `web_vitals` (`lcp_ms`, `inp_ms`, `cls`), plus minScore assertions (performance, accessibility 0.95, best-practices). If the file is absent, fall back to documented defaults (LCP 2500ms, INP 200ms, CLS 0.1) and record the fallback — but prefer the artifact.
+- **`frontend/.size-limit.json`** (size-limit) and/or a `bundlesize` config — per-entry `max_kb` read from the `bundle` section, one limit per entrypoint. Wire `@next/bundle-analyzer` for diagnosis.
+
+Because these are generated from the YAML, a budget change in `docs/architecture/performance-budget.yaml` flows straight into the CI gates — frontend, QA, SRE, and DevOps all read the same numbers. **These are enforced as CI gates that block merge on regression; DevOps wires the job** (Lighthouse CI + `size-limit --json` steps). Frontend owns emitting the configs; do not also hardcode the thresholds in test files.
+
+The web-vitals captured at runtime (Phase 4.6) report to the same `web_vitals` keys, so the field RUM data and the CI budget speak the same units.
+
+Produce `frontend/lighthouserc.json`, `frontend/.size-limit.json`, and `Shipyard/frontend-engineer/docs/performance-budget.md` (documenting which thresholds came from the artifact).
 
 ### Step 5: Visual Regression Testing
 
@@ -84,13 +88,22 @@ Produce visual regression configs in `frontend/tests/visual/`.
 
 Produce `Shipyard/frontend-engineer/docs/browser-support.md`.
 
+### Step 7: Observability & Security Verification
+
+Verify the contracts established in Phase 2 (security) and Phase 4.6 (observability) actually hold on the final build:
+
+- **Observability names match the contract.** Web-vitals (LCP/INP/CLS) report to the OTLP/analytics endpoint; the API client emits `http_requests_total` / `http_request_duration_seconds` with labels `method`, `route` (templated), `status_class`; `traceparent` is injected on every request; the global error boundary + `window.onerror`/`unhandledrejection` reporter emit the structured JSON log fields (`trace_id`/`span_id` from the live span). Grep the code for any emitted name absent from `observability-contract.md` — drift is a bug.
+- **Security headers present.** Assert CSP is served with no `unsafe-inline`/`unsafe-eval`, HSTS/`nosniff`/frame-ancestors set, and no raw `dangerouslySetInnerHTML` (all HTML passes `lib/sanitize.ts`). The E2E suite can assert the response headers on a sample route.
+- **No secrets in the client bundle.** Confirm only `NEXT_PUBLIC_*` config is exposed; no tokens/keys in the built JS.
+
 ## Output Files
 
 - `frontend/tests/components/` (component tests with a11y)
 - `frontend/tests/e2e/` (Playwright E2E tests)
 - `frontend/tests/visual/` (visual regression)
 - `frontend/playwright.config.ts`
-- `frontend/lighthouserc.json`
+- `frontend/lighthouserc.json` (LCP/INP/CLS thresholds read from `docs/architecture/performance-budget.yaml`)
+- `frontend/.size-limit.json` (per-entry `max_kb` read from the budget `bundle` section)
 - `Shipyard/frontend-engineer/docs/a11y-audit.md`
 - `Shipyard/frontend-engineer/docs/performance-budget.md`
 - `Shipyard/frontend-engineer/docs/browser-support.md`
@@ -101,12 +114,17 @@ Before concluding the frontend skill:
 - [ ] Every UI primitive has component tests covering all variants, states, and a11y
 - [ ] Every critical user flow has an E2E test
 - [ ] WCAG 2.1 AA with zero critical violations
-- [ ] Performance budget defined and enforced in CI
+- [ ] Performance budget thresholds READ FROM `docs/architecture/performance-budget.yaml` (not hardcoded) and enforced as CI gates (Lighthouse CI + size-limit); DevOps wires the job
 - [ ] Visual regression baselines captured
 - [ ] Cross-browser matrix tested (Chrome, Firefox, Safari, mobile)
+- [ ] Observability verified: web-vitals → OTLP/analytics, `traceparent` injected, global error boundary/reporter, contract names only (Step 7)
+- [ ] `security-defaults checklist passes`: CSP + security headers, no unsanitized `dangerouslySetInnerHTML`, no secrets in the bundle, secure cookies
 
 **Present testing summary with coverage report, a11y audit results, and performance scores to user.**
 
 ## Quality Bar
 
-Every component must have at least one accessibility test. "Tests pass" is not acceptable -- "94 component tests (87% branch coverage), 12 E2E flows, zero WCAG 2.1 AA violations, LCP 1.8s (budget: 2.5s), CLS 0.04 (budget: 0.1), bundle 156 KB gzip (budget: 200 KB)" is acceptable.
+Every component must have at least one accessibility test. "Tests pass" is not acceptable -- "94 component tests (87% branch coverage), 12 E2E flows, zero WCAG 2.1 AA violations, LCP 1.8s (budget 2.5s from performance-budget.yaml), CLS 0.04 (budget 0.1), bundle 156 KB gzip (budget 200 KB from performance-budget.yaml), web-vitals+traceparent emitting contract names, security-defaults checklist passes" is acceptable.
+
+- **Perf budget is a CI gate, not a doc** — `lighthouserc.json` + `.size-limit.json` thresholds derive from `docs/architecture/performance-budget.yaml`; the build fails on regression (DevOps wires the job). State the budget source, not a hardcoded number.
+- **`security-defaults checklist passes`** — CSP/security headers served, no unsanitized `dangerouslySetInnerHTML`, no secrets in the client bundle, secure cookies, input validated server-side (client validation is UX only).

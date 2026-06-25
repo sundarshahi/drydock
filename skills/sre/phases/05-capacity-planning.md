@@ -6,13 +6,20 @@ Model current and future load, validate auto-scaling, project costs, and identif
 
 ## Context Bridge
 
+- Read `docs/architecture/performance-budget.yaml` for the AUTHORITATIVE capacity/SLO targets (throughput `_rps`, `p95_ms`/`p99_ms`, `error_rate_pct`) — capacity targets READ from here; never hardcode a target RPS or latency
 - Read Phase 1 findings for resource limit issues
 - Read Phase 2 SLOs for performance baselines
 - Read Phase 3 chaos results for scaling behavior under stress
 - Read architecture docs for request fan-out ratios and data growth patterns
 
+## Contract You MUST Read First
+
+- **`docs/architecture/performance-budget.yaml`** — the per-route `throughput_rps` is the capacity target the load model sizes for; `p95_ms`/`p99_ms` is the latency ceiling the scale tiers must hold; `error_rate_pct` is the saturation budget. Load against these numbers; HPA `averageValue` and the "degradation point" derive from them.
+- **`observability-contract.md`** — every measurement query below uses the contract instruments (`http_requests_total`, `http_request_duration_seconds_bucket`, `*_pool_*`, `broker_consumer_lag`).
+
 ## Inputs
 
+- `docs/architecture/performance-budget.yaml` — capacity/SLO targets (authoritative)
 - `infrastructure/monitoring/` — current traffic metrics, resource utilization
 - `infrastructure/kubernetes/` — HPA configs, resource limits
 - `infrastructure/terraform/` — infrastructure sizing, instance types
@@ -28,15 +35,24 @@ Write `capacity/load-model.md`:
 ```markdown
 # Load Model
 
-## Current Baseline
+## Targets (from performance-budget.yaml — do NOT hardcode)
+| Target | Value | Source |
+|--------|-------|--------|
+| Throughput target (rps) | <budget> | performance-budget.yaml: api.<route>.throughput_rps |
+| p99 latency ceiling (ms) | <budget> | performance-budget.yaml: api.<route>.p99_ms |
+| Error-rate budget (%) | <budget> | performance-budget.yaml: api.<route>.error_rate_pct |
+
+## Current Baseline (measured with contract instruments)
 | Metric | Value | Source |
 |--------|-------|--------|
-| Peak RPS (requests/sec) | <measured> | Prometheus: rate(http_requests_total[5m]) |
-| Average RPS | <measured> | Prometheus: rate(http_requests_total[1h]) |
-| P99 latency at peak | <measured> | Prometheus: histogram_quantile(0.99, ...) |
+| Peak RPS (requests/sec) | <measured> | `sum(rate(http_requests_total[5m]))` |
+| Average RPS | <measured> | `sum(rate(http_requests_total[1h]))` |
+| P99 latency at peak | <measured> | `histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))` |
 | Daily active users | <measured> | Analytics |
-| Database QPS | <measured> | Database metrics |
-| Message queue throughput | <measured> | Queue metrics |
+| DB pool utilization | <measured> | `db_pool_connections_in_use / db_pool_connections_max` |
+| Broker consumer lag | <measured> | `broker_consumer_lag` |
+
+> Each scale tier (1x/10x/100x) below must hold p99 < the budgeted `p99_ms` and error ratio < `error_rate_pct`. A tier that breaches the budget is the capacity limit, not just a number in a table.
 
 ## Request Fan-Out
 For each user-facing request, the internal amplification:
@@ -97,10 +113,12 @@ spec:
     - type: Pods
       pods:
         metric:
-          name: http_requests_per_second
+          name: http_requests_per_second   # derived from http_requests_total (contract instrument)
         target:
           type: AverageValue
-          averageValue: "1000"    # Based on load test: 1200 RPS causes p99 degradation
+          # averageValue set BELOW the per-pod RPS at which p99 breaches the budgeted p99_ms
+          # (from load test) — derived from performance-budget.yaml throughput_rps, not a magic number.
+          averageValue: "1000"
 ```
 
 ### Step 3: Generate Cost Projection
@@ -145,6 +163,9 @@ theoretical throughput limits, and architectural analysis.
 ## Validation
 
 Before marking SRE skill as complete, verify:
+- [ ] Capacity/SLO targets READ from `docs/architecture/performance-budget.yaml` (throughput_rps, p99_ms, error_rate_pct) — no hardcoded target RPS/latency
+- [ ] Every measurement query uses contract instruments (`http_requests_total`, `http_request_duration_seconds_bucket`, `*_pool_*`, `broker_consumer_lag`)
+- [ ] Each scale tier holds p99 < budgeted p99_ms and error ratio < error_rate_pct
 - [ ] Load model covers 1x, 10x, and 100x projections
 - [ ] Request fan-out ratios documented for key user actions
 - [ ] Bottleneck analysis identifies the first 3 components to saturate

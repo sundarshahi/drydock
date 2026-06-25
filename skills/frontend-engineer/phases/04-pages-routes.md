@@ -129,8 +129,8 @@ services/
 
 Base client (`api-client.ts`) MUST include:
 - **Base URL** from environment variable (`NEXT_PUBLIC_API_URL`)
-- **Request interceptors** — Attach auth token, set `Content-Type`, add `X-Request-ID`
-- **Response interceptors** — Handle 401 (refresh token), 403 (redirect to unauthorized), 429 (retry with backoff), 500 (error boundary)
+- **Request interceptors** — Attach auth token, set `Content-Type`, add `X-Request-ID`, and **inject the W3C `traceparent` header** from the active browser span (see 4.6 Frontend Observability) so the browser→backend trace is unbroken per `observability-contract.md`
+- **Response interceptors** — Handle 401 (refresh token), 403 (redirect to unauthorized), 429 (retry with backoff), 500 (error boundary); parse error bodies as **RFC 9457 `application/problem+json`** (see Error Handling Strategy below)
 - **Timeout** — 30 second default, configurable per request
 - **Retry logic** — Exponential backoff for 5xx errors (max 3 retries), no retry on 4xx
 - **Request deduplication** — Cancel duplicate in-flight requests
@@ -196,27 +196,73 @@ export function useUpdateUser(id: string) {
 - Type-narrow response data after validation for full type safety
 - Validate request payloads before sending to catch errors early
 
-### Error Handling Strategy
+### Error Handling Strategy (RFC 9457 + shared error catalog)
+
+The backend returns errors as **RFC 9457 `application/problem+json`** (`$ref` to the `Problem` OpenAPI component owned by solution-architect). The frontend parses that exact shape — it does NOT invent a frontend-only error type — and resolves user-facing copy from the **single source-of-truth error catalog** (`libs/shared/errors/catalog.*`), the same module the backend runtime and the docs error table read from. Do not re-declare titles/messages inline.
 
 ```typescript
-// Centralized error handling
-type ApiError = {
-  code: string;
-  message: string;
-  details?: Record<string, string[]>;
-  trace_id?: string;
+// RFC 9457 problem+json — the wire shape (matches the shared `Problem` component)
+type Problem = {
+  type: string;        // URI reference identifying the problem type
+  title: string;       // short, human-readable summary
+  status: number;      // HTTP status code
+  detail?: string;     // human-readable explanation specific to this occurrence
+  instance?: string;   // URI reference for this specific occurrence
+  trace_id?: string;   // standard extension — joins to the backend trace
+  errors?: Array<{ field?: string; pointer?: string; detail: string }>; // field-level
 };
 
-// Map API errors to user-facing messages
-const errorMessages: Record<string, string> = {
-  VALIDATION_ERROR: 'Please check the form for errors.',
-  NOT_FOUND: 'The requested resource was not found.',
-  UNAUTHORIZED: 'Your session has expired. Please log in again.',
-  FORBIDDEN: 'You do not have permission to perform this action.',
-  RATE_LIMITED: 'Too many requests. Please wait a moment.',
-  INTERNAL_ERROR: 'Something went wrong. Please try again.',
-};
+// Parse ONLY when Content-Type is application/problem+json; fall back to a synthetic
+// Problem for network/timeout failures so the UI always has a stable shape.
+function parseProblem(res: Response, body: unknown): Problem { /* ... */ }
+
+// User-facing copy comes from the SHARED catalog, keyed by the catalog `code`
+// (NOT hardcoded here). The catalog entry supplies title / message_template /
+// remediation / docs_anchor; map Problem.type or an errors[] code onto it.
+import { errorCatalog } from '@/libs/shared/errors/catalog';
+function messageForProblem(p: Problem): string {
+  return errorCatalog.resolve(p)?.message ?? p.detail ?? p.title;
+}
 ```
+
+- Surface `trace_id` in the error UI (e.g. a "Reference: <trace_id>" line) so support can join the user's report to the backend trace.
+- Render `errors[]` against the matching form fields (`field`/`pointer`) for inline validation feedback.
+- Report the failure to the global error reporter (4.6) with `trace_id` attached so it correlates with the backend.
+
+### 4.6 Frontend Observability (EMIT — names per `observability-contract.md`)
+
+Browser telemetry is a CONTRACT, not a nicety: the frontend STARTS the trace and emits the same metric/log/span names the backend, devops dashboards, and sre alerts agree on. Implement in `frontend/app/lib/observability/`:
+
+**Web Vitals → OTLP / analytics endpoint.** Use the `web-vitals` library to capture **LCP, INP, CLS** (plus FCP, TTFB) and POST them to the OTLP/analytics collector (`NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT` / analytics beacon URL — never hard-code a host). These feed the `web_vitals` budget in `docs/architecture/performance-budget.yaml` and the RUM panels. Attach the page `route` (templated, never a raw URL with IDs — cardinality bound) and `trace_id` from the active span.
+
+```
+observability/
+├── web-vitals.ts        # onLCP/onINP/onCLS → beacon to OTLP/analytics endpoint
+├── error-reporter.ts    # window.onerror + unhandledrejection → structured JSON log
+├── error-boundary.tsx   # global React error boundary → error-reporter
+├── tracing.ts           # browser tracer; startSpan, current traceparent getter
+└── index.ts
+```
+
+- **Browser RED metrics.** Emit `http_requests_total` and `http_request_duration_seconds` from the API client with labels `method`, `route` (templated), `status_class` — EXACT names from the contract, so the RUM/dashboard panels light up. Duration in **seconds**, standard buckets.
+- **Global error reporter.** Register `window.onerror` and `window.addEventListener('unhandledrejection', ...)` plus a top-level React **error boundary** that wraps the root layout (in addition to per-route `error.tsx`). Each report is a structured JSON object with the contract log fields — `timestamp`, `level: "error"`, `message`, `service`, `env`, `trace_id`/`span_id` from the live span, `error.type`/`error.stack` — and is PII-safe (no tokens, no request bodies with personal data).
+- **W3C trace propagation.** The browser tracer starts a span per navigation/interaction and the API client request interceptor injects the current `traceparent` (and `baggage`) header on every fetch/XHR, so backend spans join the browser-initiated trace. Resource attributes `service.name`, `service.version`, `deployment.environment` match the backend strings exactly.
+- **Export endpoint** is read from env (`NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT`), honoring `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` — never a hard-coded collector host.
+
+### 4.7 OpenFeature Client Flag Hook (consume shared `libs/shared/feature-flags/`)
+
+Add a client hook `frontend/app/hooks/use-flag.ts` over the **shared OpenFeature client** (`libs/shared/feature-flags/`, owned by software-engineer) and registry `config/feature-flags.yaml`. The frontend does NOT create its own flag system — it adds an SSR/edge-safe hook.
+
+```typescript
+// SSR/edge-safe: evaluates on the server during RSC/SSR AND hydrates on the client.
+// fail-static: on provider error/unreachable, return the per-flag SAFE DEFAULT
+// (from config/feature-flags.yaml `default`) — never throw, never block render.
+export function useFlag<T>(key: string, defaultValue: T): T { /* OpenFeature client */ }
+```
+
+- **Always-present fallback.** Provider-agnostic; if the provider is down, return the registry's per-flag `default` (fail-static). A flag check never crashes the page or causes hydration mismatch.
+- **SSR/edge safety.** Evaluate with a stable context on server and client so the rendered value matches across the SSR/CSR boundary (no flicker, no hydration error). Edge runtime must use the edge-safe provider entrypoint.
+- **Registry-driven.** Only consume keys declared in `config/feature-flags.yaml` (`{ key, type, owner, default, created, removal_by }`). Do not invent ad-hoc flag keys.
 
 ## Validation Loop
 
@@ -229,6 +275,9 @@ Before moving to Phase 5:
 - Optimistic updates work for mutation operations
 - State management stores are wired and functional
 - All pages implement loading/error/empty states
+- API client parses RFC 9457 `application/problem+json` and resolves copy from the shared error catalog (`trace_id` surfaced)
+- API client injects W3C `traceparent` on every request; web-vitals + global error reporter wired (4.6)
+- `useFlag` hook evaluates SSR/edge-safe with fail-static safe defaults from `config/feature-flags.yaml` (4.7)
 
 **Then run the Functional Verification Pass (see main SKILL.md):**
 
@@ -253,3 +302,7 @@ Before moving to Phase 5:
 - **Zero dead interactive elements** — every button, link, and form does something when clicked
 - **Navigation is complete** — every page reachable from at least one nav element, logo links to home
 - **Top 5 user flows verified** — walked through click-by-click, every step works end-to-end
+- **Errors are RFC 9457** — `application/problem+json` parsed, copy from shared error catalog, `trace_id` surfaced
+- **Browser trace started** — `traceparent` injected on every API call; web-vitals + global error boundary/reporter emit contract names
+- **Flags fail-static** — `useFlag` SSR/edge-safe, returns registry safe default on provider error
+- **`security-defaults checklist passes`** — no secrets in the client bundle, secure cookies (`HttpOnly`+`Secure`+`SameSite`), no auth tokens in `localStorage`, no unsanitized `dangerouslySetInnerHTML`, input validated at the boundary (client validation is UX only)

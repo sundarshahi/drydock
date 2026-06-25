@@ -218,9 +218,11 @@ For each service identified in the architecture, generate a directory under `doc
 <Exact commands to determine impact scope>
 
 ```bash
-# Check error rate across all instances
+# Check error rate across all instances.
+# Metric names + labels are EXACTLY from observability-contract.md — error is status_class="5xx",
+# NOT status=~"5.." (no such label exists; that query returns empty and lies "0% errors").
 kubectl exec -n monitoring prometheus-0 -- promtool query instant \
-  'sum(rate(http_requests_total{status=~"5..",service="<service>"}[5m])) / sum(rate(http_requests_total{service="<service>"}[5m]))'
+  'sum(rate(http_requests_total{status_class="5xx",service="<service>"}[5m])) / sum(rate(http_requests_total{service="<service>"}[5m]))'
 
 # Check affected pods
 kubectl get pods -n production -l app=<service> -o wide
@@ -233,10 +235,10 @@ kubectl rollout history deployment/<service> -n production
 
 ```
 Is error rate > 10%?
-+-- YES -> Go to "Emergency Mitigation"
++-- YES -> Go to "Emergency Mitigation"  (kill-switch FIRST, then rollback)
 +-- NO
     +-- Is it correlated with a recent deployment?
-    |   +-- YES -> Go to "Rollback Procedure"
+    |   +-- YES -> Go to "Emergency Mitigation" then "Rollback Procedure"
     |   +-- NO
     |       +-- Is a downstream dependency unhealthy?
     |       |   +-- YES -> Go to "Dependency Failure"
@@ -244,7 +246,28 @@ Is error rate > 10%?
 ```
 
 ## Emergency Mitigation
-<Steps to stop the bleeding immediately, before root cause is known>
+
+Stop the bleeding BEFORE root cause is known and BEFORE rolling back — flipping a flag is seconds and reversible; a rollback is minutes and re-runs deploy machinery. Use the **ops kill-switch flag** from the registry to shed the failing path first, THEN escalate to rollback if the flag does not stabilize.
+
+### 1. Flip the ops kill-switch (FIRST — read the key from the registry)
+```bash
+# Kill-switch keys are declared in config/feature-flags.yaml — do NOT invent a key.
+# Find the ops kill-switch for the affected feature/path:
+grep -A6 'kill-switch\|ops_' config/feature-flags.yaml   # confirm key, type, owner, default
+
+# Flip it OFF via the OpenFeature client / provider CLI (env/config fallback always works):
+#   - registry/provider:  set <ops.kill_switch.key> = false
+#   - or env fallback (always present):  FEATURE_<KEY>=false  (per libs/shared/feature-flags/)
+# Verify the path is shed:
+kubectl exec -n monitoring prometheus-0 -- promtool query instant \
+  'sum(rate(http_requests_total{status_class="5xx",route="<failing-route>"}[1m]))'
+```
+- Kill switches fail STATIC to the registry `default` — verify the `default` for the key is the SAFE (off) value so a provider outage does not re-enable the failing path.
+- If the kill-switch stabilizes error rate below the SLO burn threshold → incident mitigated; proceed to Deep Investigation for root cause, no rollback needed.
+- If NO kill-switch exists for this path, that is a gap → file a follow-up to add one to `config/feature-flags.yaml`, and proceed to Rollback.
+
+### 2. If the kill-switch does not stabilize → Rollback Procedure (below)
+<Other immediate levers: shed load at the gateway, scale out, drain a bad AZ — before rollback>
 
 ## Rollback Procedure
 ```bash
@@ -278,12 +301,52 @@ kubectl rollout status deployment/<service> -n production --timeout=120s
 ```
 
 Generate at minimum these runbooks per service:
-- `high-error-rate.md` — elevated 5xx responses
-- `high-latency.md` — p99 latency exceeding SLO threshold
+- `high-error-rate.md` — elevated 5xx responses (`http_requests_total{status_class="5xx"}`)
+- `high-latency.md` — p99 latency exceeding the budgeted threshold (`http_request_duration_seconds_bucket`)
 - `out-of-memory.md` — OOMKilled pods, memory pressure
-- `dependency-down.md` — downstream service or external API unreachable
+- `dependency-down.md` — downstream service or external API unreachable (pool USE instruments)
+- `feature-kill-switch.md` — **the feature-kill-switch runbook type** (see template below)
 
 Add additional runbooks for service-specific failure modes discovered during chaos engineering (Phase 3) or identified in the architecture (e.g., `queue-consumer-lag.md`, `database-replication-lag.md`, `certificate-expiry.md`).
+
+#### Runbook type: `feature-kill-switch.md`
+
+A dedicated runbook for the kill-switch lever itself, so an on-call engineer can shed a bad feature WITHOUT a rollback. It enumerates every ops kill-switch key from the registry and exactly what each sheds.
+
+```markdown
+# Runbook: Feature Kill Switches
+
+## When to use
+A specific feature/code path is failing (error spike, latency, bad dependency) and you
+want to disable it in seconds — reversible, no redeploy. Use BEFORE rollback.
+
+## Available ops kill-switches (source: config/feature-flags.yaml)
+| Flag key | Type | Owner | Safe default | What flipping OFF sheds |
+|----------|------|-------|--------------|--------------------------|
+| `ops.checkout.kill_switch` | boolean | sre | false (off) | Disables checkout flow → users see "temporarily unavailable", no 5xx |
+| `ops.recommendations.kill_switch` | boolean | sre | false | Drops the recommendations call → page renders without the panel |
+<!-- one row per kill-switch key actually present in config/feature-flags.yaml -->
+
+## How to flip (provider + always-present env/config fallback)
+```bash
+grep -A6 'kill_switch' config/feature-flags.yaml        # confirm the exact key + default
+# Flip via provider/registry, OR the env fallback that is always available:
+#   FEATURE_OPS_CHECKOUT_KILL_SWITCH=false   (per libs/shared/feature-flags/)
+```
+
+## Verify it took effect
+```bash
+kubectl exec -n monitoring prometheus-0 -- promtool query instant \
+  'sum(rate(http_requests_total{status_class="5xx",route="<route>"}[1m]))'   # should drop
+```
+
+## Aftercare
+- [ ] Announce the kill-switch flip in the incident channel (it is a config change)
+- [ ] Confirm the flag's `default` in config/feature-flags.yaml is the SAFE value (fail-static on provider outage)
+- [ ] File the re-enable ticket; respect the flag's `removal_by` date
+```
+
+> Every key listed in this runbook MUST exist in `config/feature-flags.yaml` — `scripts/check-kill-switch.sh` (Production-Ready Gate) fails the build if a runbook references a kill-switch key absent from the registry.
 
 ## Validation
 
@@ -296,7 +359,9 @@ Before proceeding to Phase 5, verify:
 - [ ] Failover playbook reviewed against actual infrastructure topology
 - [ ] Every alert has a corresponding runbook with exact commands
 - [ ] Runbooks include decision trees, not just prose
-- [ ] All runbook commands use real metric names and pod labels from this system
+- [ ] All runbook commands use real metric names and pod labels from this system — error queries use `status_class="5xx"` (contract label), never `status=~"5.."`
+- [ ] Emergency Mitigation flips an ops kill-switch key (read from `config/feature-flags.yaml`) BEFORE the rollback procedure
+- [ ] `feature-kill-switch.md` runbook exists and every key it lists is present in `config/feature-flags.yaml` (`scripts/check-kill-switch.sh` passes)
 - [ ] Runbooks that do not specify who to escalate to are rejected
 
 ## Quality Bar

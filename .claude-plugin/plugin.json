@@ -1,10 +1,13 @@
 {
   "name": "shipyard",
-  "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 14 specialized agents cover architecture, tested backend/frontend, security audit + VAPT (OWASP 2025 / API / LLM Top 10), CI/CD, and documentation — from idea to ship. Evidence-grounded with anti-hallucination guardrails.",
-  "version": "5.5.0",
+  "description": "Transforms Claude Code from raw code generation into a full production-ready engineering system. 15 specialized agents cover architecture (12-Factor + Clean Architecture), API-first contracts, tested backend/frontend, observability & telemetry, security-by-default, CI/CD + supply-chain hardening, automated testing, performance budgets, feature flags, developer experience, and per-product regulatory compliance (SOC 2 / GDPR / HIPAA / PCI-DSS) — plus security audit + VAPT (OWASP 2025 / API / LLM Top 10) — from idea to ship. Enterprise-grade by default and evidence-grounded with anti-hallucination guardrails.",
+  "version": "2.0.0",
   "author": {
-    "name": "sundarshahi"
+    "name": "sundarshahi",
+    "email": "shahithakurisundar@gmail.com"
   },
+  "homepage": "https://github.com/sundarshahi/shipyard",
+  "repository": "https://github.com/sundarshahi/shipyard",
   "license": "MIT",
-  "keywords": ["shipyard", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "vapt", "owasp", "pentest", "sre", "ai", "ml", "llm"]
+  "keywords": ["shipyard", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "vapt", "owasp", "pentest", "sre", "ai", "ml", "llm", "compliance", "soc2", "gdpr", "hipaa", "pci-dss", "observability", "opentelemetry", "12-factor", "feature-flags", "clean-architecture"]
 }

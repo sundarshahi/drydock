@@ -1,0 +1,85 @@
+name: Validate Plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate plugin manifest, hooks, and skills
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate plugin.json is valid JSON with required fields
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          path = ".claude-plugin/plugin.json"
+          with open(path) as f:
+              data = json.load(f)
+          required = ["name", "description", "version"]
+          missing = [k for k in required if not data.get(k)]
+          if missing:
+              print(f"::error file={path}::missing required fields: {missing}")
+              sys.exit(1)
+          print(f"plugin.json OK — {data['name']} v{data['version']}")
+          PY
+
+      - name: Lint hooks.json
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          path = "hooks/hooks.json"
+          with open(path) as f:
+              data = json.load(f)
+          if "hooks" not in data or not isinstance(data["hooks"], dict):
+              print(f"::error file={path}::expected a top-level 'hooks' object")
+              sys.exit(1)
+          print(f"hooks.json OK — {len(data['hooks'])} event group(s)")
+          PY
+
+      - name: Verify every skill has YAML frontmatter with name + description
+        run: |
+          python3 - <<'PY'
+          import glob, sys
+          failures = []
+          skills = sorted(glob.glob("skills/*/SKILL.md"))
+          if not skills:
+              print("::error::no skills/*/SKILL.md files found")
+              sys.exit(1)
+          for path in skills:
+              with open(path) as f:
+                  text = f.read()
+              if not text.startswith("---"):
+                  failures.append(f"{path}: missing YAML frontmatter")
+                  continue
+              end = text.find("---", 3)
+              if end == -1:
+                  failures.append(f"{path}: unterminated frontmatter")
+                  continue
+              front = text[3:end]
+              for key in ("name:", "description:"):
+                  if key not in front:
+                      failures.append(f"{path}: frontmatter missing '{key}'")
+          for f in failures:
+              print(f"::error::{f}")
+          if failures:
+              sys.exit(1)
+          print(f"All {len(skills)} skills have valid frontmatter")
+          PY
+
+      - name: Run claude plugin validate (best-effort)
+        run: |
+          if command -v claude >/dev/null 2>&1; then
+            claude plugin validate . || echo "::warning::claude plugin validate reported issues"
+          else
+            echo "claude CLI not available — skipping plugin validate"
+          fi

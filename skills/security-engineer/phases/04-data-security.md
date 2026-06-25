@@ -2,7 +2,7 @@
 
 ## Objective
 
-Inventory every piece of sensitive data in the system, verify encryption at rest and in transit, and validate regulatory compliance posture. security-engineer is the SOLE AUTHORITY on PII inventory, data classification, and GDPR/CCPA compliance assessment at the application layer. No other skill performs PII audits or compliance mapping. Generate all outputs in `Shipyard/security-engineer/data-security/`.
+Inventory every piece of sensitive data in the system and verify encryption at rest and in transit. security-engineer is the SOLE AUTHORITY on the PII inventory, data classification, and the encryption AUDIT at the application layer. It does NOT own regulatory framework scoping or requirement→control mapping — the **compliance-officer** owns GDPR/CCPA/SOC2/etc. scoping, the mandatory-control matrix, and the control-evidence map (per `Shipyard/.protocols/conflict-resolution.md` + `Shipyard/.protocols/compliance-protocol.md`). This phase produces the PII inventory plus a **non-authoritative compliance posture note** that compliance-officer CONSUMES; it does not render the compliance verdict. Generate all outputs in `Shipyard/security-engineer/data-security/`.
 
 ## Context Bridge
 
@@ -103,32 +103,33 @@ Verify enforcement:
 - Do purge jobs handle cascading deletes correctly?
 - Are audit logs exempted from purge (required for compliance)?
 
-### Step 5: Map GDPR/CCPA Compliance
+### Step 5: Compliance Posture Note (NON-authoritative — hand-off to compliance-officer)
 
-Map regulatory requirements to implementation status. For each requirement, assess: Compliant, Partial, Non-Compliant, or Not Applicable.
+This step does NOT render a compliance verdict and does NOT scope frameworks or map requirements to controls — **compliance-officer owns that** (framework scoping, the mandatory-control matrix, the control-evidence map, and the blocking compliance gate). What this phase produces is a *posture note*: the data-handling facts the compliance-officer needs, plus an OBSERVED implementation status for each privacy-relevant capability the PII inventory and encryption audit already surfaced. Mark each capability Present / Partial / Absent / Not Applicable based on what the code actually does — leave the requirement→article mapping and the pass/fail call to compliance-officer.
 
-**GDPR requirements:**
+**Do NOT state regulatory article numbers, §-citations, or statutory clocks from memory.** Per `Shipyard/.protocols/freshness-protocol.md` + `grounding-protocol.md`, any specific article/clock MUST be verified LIVE against the official source this session (cite the eur-lex / official-register URL + the quoted span + the access date, tag `[verified]`); otherwise leave the article cell blank and tag the row `[unverified]`. The deterministic requirement→control map lives in `compliance-protocol.md`, not here.
 
-| Requirement | GDPR Article | Status | Implementation | Gap |
-|------------|-------------|--------|----------------|-----|
-| Lawful basis for processing | Art. 6 | | | |
-| Consent management | Art. 7 | | | |
-| Right to access (data export) | Art. 15 | | | |
-| Right to rectification | Art. 16 | | | |
-| Right to erasure | Art. 17 | | | |
-| Right to data portability | Art. 20 | | | |
-| Data breach notification | Art. 33-34 | | | |
-| Data Protection Impact Assessment | Art. 35 | | | |
-| Privacy by design | Art. 25 | | | |
-| Data Processing Agreements | Art. 28 | | | |
-| Cross-border transfers | Art. 44-49 | | | |
-| DPO appointment | Art. 37-39 | | | |
+**Privacy-capability posture (observed from PII inventory + encryption audit):**
 
-**CCPA additional requirements:**
-- Do Not Sell My Personal Information mechanism
-- Financial incentive disclosures for data collection
-- 12-month lookback for data collection categories
-- Household-level data access requests
+| Privacy capability | Article (verify live per freshness-protocol; cite eur-lex URL + quote + date, tag `[verified]`) | Observed status | Implementation (`path:line`) | Gap / note for compliance-officer |
+|--------------------|--------------------------------------------------------------------------------------------------|-----------------|------------------------------|-----------------------------------|
+| Lawful basis recorded for processing | _(verify live)_ | | | |
+| Consent capture + management | _(verify live)_ | | | |
+| Right to access / data export | _(verify live)_ | | | |
+| Right to rectification | _(verify live)_ | | | |
+| Right to erasure / deletion pipeline | _(verify live)_ | | | |
+| Data portability (machine-readable export) | _(verify live)_ | | | |
+| Breach-notification readiness (logging/alerting wired) | _(verify live)_ | | | |
+| Privacy-by-design / data minimization in schema | _(verify live)_ | | | |
+| Cross-border transfer / residency boundary | _(verify live)_ | | | |
+
+**CCPA/CPRA-relevant facts to hand off (observed, not adjudicated):**
+- Whether a "Do Not Sell / Share My Personal Information" opt-out mechanism exists in the code.
+- Whether financial-incentive / data-collection disclosures are surfaced to users.
+- Whether the system can produce a lookback of collected data categories (and over what window the code supports).
+- Whether household-level / per-subject access requests are supportable from the data model.
+
+Write these to `compliance-posture-note.md` and flag it explicitly as **non-authoritative input for compliance-officer** — the authoritative scoping, mapping, and verdict are produced by compliance-officer.
 
 ### Step 6: Verify Secrets Management
 
@@ -141,6 +142,17 @@ Audit how the codebase handles secrets:
 - Verify secret rotation automation
 - Check CI/CD pipeline for exposed secrets in logs or artifacts
 
+### Step 7: Cross-Check Logger Redaction Deny-List Against Data Classification
+
+The `software-engineer` wires a PII redaction deny-list **into the logger itself** (see `skills/software-engineer/phases/03-cross-cutting.md` "PII-safe log redaction" and the PII-safe rules in `Shipyard/.protocols/observability-contract.md`). That deny-list is only correct if it covers **every field the data classification marks as PII/Confidential/Restricted**. Verify the two agree — a classified field absent from the deny-list is a leak waiting to happen.
+
+For each field in the PII inventory (Step 1) with `Classification` ∈ {Confidential, Restricted} or `Logged = should be No`:
+- Confirm the field name (and its common aliases/serialized keys) appears in the logger deny-list (pino `redact` paths / structlog processor / logback masking — whichever the codebase uses).
+- Confirm the baseline secret/PII keys are present: `authorization, cookie, set-cookie, password, token, access_token, refresh_token, secret, api_key, ssn, credit_card, card_number, cvv`, plus request/response BODY redacted by default.
+- Any classified field NOT covered by the deny-list is an **A09:2025 (Security Logging & Alerting Failures)** + **A04:2025** finding — file it with the missing field name and the exact deny-list path that must be added. Owner for the fix: software-engineer (logger config); this phase produces the gap list, not the logger change.
+
+Record the result as a coverage table (`Classified field` · `In deny-list?` · `Logger path` · `Finding ID if missing`) in `encryption-audit.md` (or a dedicated `log-redaction-coverage.md`). This ties the data-classification doc to observability-contract PII-safe logging so a classified field can never reach stdout unredacted.
+
 ## Output Deliverables
 
 Write all outputs to `Shipyard/security-engineer/data-security/`:
@@ -150,7 +162,7 @@ Write all outputs to `Shipyard/security-engineer/data-security/`:
 | `pii-inventory.md` | Complete catalog of every PII field across all storage locations |
 | `encryption-audit.md` | Encryption review for at-rest, in-transit, and application-level |
 | `data-retention-policy.md` | Retention analysis with enforcement verification |
-| `gdpr-compliance.md` | GDPR/CCPA requirement-to-implementation mapping |
+| `compliance-posture-note.md` | NON-authoritative privacy-capability posture + CCPA/CPRA facts for compliance-officer to consume (no framework scoping or requirement→control mapping — that is compliance-officer's authority; any article cited must be `[verified]` live) |
 
 ## Validation
 
@@ -158,8 +170,9 @@ Before proceeding to Phase 5, verify:
 - [ ] PII inventory covers ALL storage locations (not just database columns)
 - [ ] Every encryption implementation has been reviewed (not just "TLS is enabled")
 - [ ] Key management lifecycle is fully documented
-- [ ] GDPR/CCPA compliance status is assessed per requirement
+- [ ] Compliance posture note records observed privacy-capability status as NON-authoritative input for compliance-officer; no framework scoping or requirement→control verdict is rendered here, and every cited article/clock is `[verified]` live (blank + `[unverified]` otherwise — never from memory)
 - [ ] Secrets management audit found no hardcoded credentials
+- [ ] Every Confidential/Restricted PII field is covered by the logger redaction deny-list (Step 7) — gaps filed as A09:2025/A04:2025 findings for software-engineer to fix in the logger config
 
 ## Quality Bar
 

@@ -19,6 +19,10 @@ description: >
 !`cat Shipyard/.protocols/boundary-safety.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/conflict-resolution.md 2>/dev/null || true`
 !`cat Shipyard/.protocols/grounding-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/security-defaults.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/compliance-protocol.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/architecture-boundaries.md 2>/dev/null || true`
+!`cat Shipyard/.protocols/observability-contract.md 2>/dev/null || true`
 !`cat .shipyard.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Shipyard/.orchestrator/codebase-context.md 2>/dev/null || true`
 
@@ -45,6 +49,18 @@ Read `Shipyard/.orchestrator/settings.md` at startup. Adapt discovery depth:
 | **Standard** | 5-7 questions across 2 rounds. Scale sizing + constraints. Fitness-derived architecture. |
 | **Thorough** | 12-15 questions across 4 structured rounds. Full capacity planning. Trade-off analysis. Architecture alternatives. |
 | **Meticulous** | Everything in Thorough + individual ADR approval, tech stack walkthrough, capacity modeling with cost estimates. |
+
+### Always-Resolved Defaults (every mode, never Thorough-gated)
+
+Regardless of engagement mode — including Express — these three artifacts are ALWAYS produced. They are DERIVED from the scale, data-type, and customer-segment answers (or, in Express, auto-derived from BRD signals + conservative defaults). They are never gated behind Thorough/Meticulous-only rounds, because frontend/qa/sre/devops/software-engineer skills READ them and will hardcode wrong values if they are absent:
+
+| Always-resolved artifact | How it is resolved even in Express | Owner contract |
+|--------------------------|-------------------------------------|----------------|
+| **Performance budget** — `docs/architecture/performance-budget.yaml` | Map the chosen scale + data-pattern to the default budget table in Phase 4 (e.g. small/balanced-CRUD → p95 500ms, LCP 2500ms, bundle 200KB). If no scale signal, use the small/balanced row. | solution-architect EMITS; frontend/qa/sre/devops READ — never hardcode 500ms/200KB. |
+| **Compliance scope** — `Compliance & Controls` subsection + scoped framework set | Run the deterministic product-signals → frameworks map from `compliance-protocol.md` against BRD/security PII signals. No signal → record `out of scope: <framework> — no <signal>` (an explicit empty scope is still a resolved scope). | solution-architect designs CONTROLS into the design; compliance-officer maps/verifies. |
+| **Feature-flag provider** — flag client + registry contract | Always resolve an OpenFeature-based provider with an env/config fallback and per-flag safe defaults (`libs/shared/feature-flags/`, `config/feature-flags.yaml`). In Express, default to the env/config provider with no external service. | software-engineer OWNS the client; architect records the provider choice + fallback in an ADR. |
+
+Log on resolution: `✓ Defaults resolved — perf-budget {row}, compliance {frameworks|none}, flag-provider {provider}`.
 
 ## Progress Output
 
@@ -225,18 +241,20 @@ AskUserQuestion(questions=[{
 
 ```python
 AskUserQuestion(questions=[{
-  "question": "Any hard constraints?",
+  "question": "Any hard constraints? Select every regulatory regime that applies — the six deterministic compliance signals can co-occur (e.g. GDPR + CCPA + SOC2).",
   "header": "Compliance & Deployment",
   "options": [
     {"label": "No special requirements", "description": "Standard web app, no regulatory burden"},
     {"label": "GDPR — EU user data", "description": "Data residency, right to deletion, consent management"},
+    {"label": "CCPA / CPRA — California consumers", "description": "Do-not-sell/share opt-out, data-category lookback, consumer access requests"},
     {"label": "SOC2 / ISO 27001 — enterprise customers", "description": "Audit trails, access controls, security policies"},
     {"label": "HIPAA — health data", "description": "BAA required, encryption everywhere, dedicated tenancy"},
     {"label": "PCI DSS — payment data", "description": "Tokenization, network segmentation, quarterly scans"},
-    {"label": "Multiple / Other (specify)", "description": "Select to describe your requirements"},
+    {"label": "FedRAMP — US federal customers", "description": "Authorization boundary, NIST 800-53 baseline, continuous monitoring"},
+    {"label": "Other (specify)", "description": "Select to describe additional requirements"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
-  "multiSelect": false
+  "multiSelect": true
 }])
 ```
 
@@ -378,14 +396,18 @@ After gathering inputs, DERIVE the architecture from constraints. The architectu
 | Real-time | WebSocket/SSE infrastructure, pub/sub (Redis Pub/Sub or Kafka), in-memory state |
 | Balanced CRUD | Standard relational DB, connection pooling, query optimization |
 
-**Compliance Impact:**
+**Compliance Impact** (ILLUSTRATIVE ONLY — directional architecture cues, NOT the authoritative map):
 
-| Requirement | -> Architecture Changes |
+> This table sketches the *shape* of the architectural change each regime tends to demand, to steer the fitness function. It is **not** the source of truth and intentionally omits specifics. The single source of truth for which frameworks are in scope and which controls are mandatory is the deterministic **product-signals → frameworks** map in `Shipyard/.protocols/compliance-protocol.md`, materialized in the Phase 2 **Compliance & Controls** subsection (which designs the concrete controls in). Any specific scan cadence, breach-notification window, control id, article, or §-citation is **NOT** stated here and MUST be verified LIVE per `freshness-protocol.md` in that subsection — never from memory (the same BINDING freshness rule the Compliance & Controls subsection carries). compliance-officer later maps/verifies those controls to evidence.
+
+| Requirement | -> Architecture cue (illustrative) |
 |------------|------------------------|
 | GDPR | Data residency controls, right-to-deletion pipeline, consent management, PII encryption |
+| CCPA / CPRA | Do-not-sell/share opt-out plumbing, data-category lookback support, consumer access/deletion requests |
 | SOC2 / ISO 27001 | Audit trail on all mutations, RBAC, centralized logging, access review automation |
 | HIPAA | Dedicated tenancy, encryption at rest + transit, BAA with all vendors, audit logging, no shared infrastructure |
-| PCI DSS | Tokenize card data (use Stripe/Adyen), network segmentation, quarterly vulnerability scans, no raw card storage |
+| PCI DSS | Tokenize card data (use Stripe/Adyen), network segmentation, periodic vulnerability scanning, no raw card storage |
+| FedRAMP | Defined authorization boundary, NIST 800-53-aligned control baseline, continuous monitoring, US-region/data-handling boundaries |
 
 **Availability Impact:**
 
@@ -430,10 +452,40 @@ One ADR per major decision using this template:
 
 Required ADRs:
 - Architecture pattern (monolith, microservices, modular monolith, event-driven)
+- **Architecture-style & layering ADR (REQUIRED, per `architecture-boundaries.md`)** — see below
 - Communication patterns (sync REST/gRPC, async messaging, CQRS)
 - Data strategy (shared DB, DB-per-service, event sourcing)
 - Auth architecture (JWT, OAuth2, session-based)
 - Multi-tenancy strategy (row-level, schema-level, DB-level)
+- Feature-flag provider ADR (OpenFeature provider + env/config fallback + per-flag safe defaults, per the always-resolved defaults above)
+
+#### Architecture-Style & Layering ADR (REQUIRED — emit `ADR-NNN-architecture-style.md`)
+
+Emit an ADR that documents the Clean/Hexagonal layering and the **dependency-direction rule** per `Shipyard/.protocols/architecture-boundaries.md`. It is the design-time source of truth for the boundary that software-engineer enforces MECHANICALLY (`make arch`, exit non-zero on violation) — the architect declares the law; the engineer wires the fitness function. The ADR MUST state:
+
+- The layer stack innermost→outermost: **domain** (entities/value-objects/business rules, zero framework/IO imports) → **application** (use-cases + PORT interfaces) → **infrastructure/adapters** (frameworks, DB drivers, HTTP clients, ORMs, SDKs).
+- **The one law:** source-code dependencies (imports) point INWARD only; a framework/ORM/HTTP/DB import in the domain is a HIGH-severity, build-blocking violation.
+- **Ports owned inside, adapters bound at the composition root** — use-cases receive ports via constructor/parameter injection; only `main`/bootstrap/DI module names concrete adapters.
+- A pointer to the per-language fitness function software-engineer will emit (`.dependency-cruiser.js` / ArchUnit / `.importlinter` / `deptrac.yaml` / `.go-arch-lint.yml`) and the `make arch` CI gate. Note explicitly: **the architect does not implement the lint; it specifies the rule the lint must encode.**
+
+#### Compliance & Controls (REQUIRED subsection — design controls in, do not just name regulations)
+
+Consume `Shipyard/.protocols/compliance-protocol.md`. Run the deterministic **product-signals → frameworks** map against the BRD, the security-engineer PII inventory (if present), and any `compliance:` block in `.shipyard.yaml`. This subsection is ALWAYS produced (see Always-Resolved Defaults) — when no signal scopes a framework, record `out of scope: <framework> — no <signal>` so the empty scope is auditable.
+
+When a signal indicates regulated data, the architect DESIGNS the required CONTROLS into the system design (not advice — concrete architecture) and records them in a control table:
+
+| Control area | Designed-in mechanism (record the concrete design decision) |
+|--------------|--------------------------------------------------------------|
+| Audit logging | Append-only audit trail on all mutations (who/what/when/before-after); tamper-evident store; which entities are audited |
+| Encryption at rest | KMS-backed envelope encryption for PII/PHI columns + storage; key rotation policy; which fields |
+| Encryption in transit | TLS 1.2+ everywhere incl. service-to-service; mTLS where the framework requires dedicated tenancy |
+| RBAC / authorization | Role model + per-object (default-deny) authz design feeding `security-defaults.md`; tenant + object-id checks at the data layer |
+| Retention & deletion | Retention windows per data class; right-to-erasure / right-to-delete pipeline (GDPR/CCPA); soft-delete vs hard-delete policy |
+| Data residency | Region pinning + replication boundaries for EU/regulated data; where data may and may not flow |
+| Consent | Consent capture + lawful-basis recording (GDPR Arts. 5–11) where personal data is processed |
+
+- **Freshness rule (BINDING):** any specific control id, article number, §-citation, or statutory clock (e.g. GDPR 72-hour breach notice, HIPAA breach notice window) is verified LIVE against the official source this session per `compliance-protocol.md` — NEVER written from memory. If it cannot be verified live, mark it `not verified`; do not fabricate.
+- Each designed control becomes an Implementing-artifact target the compliance-officer will later map to evidence (`path:line`). The architect's job is to ensure the design HAS a place for each mandatory control.
 
 ### system-diagrams/
 Create Mermaid diagrams in markdown files:
@@ -444,12 +496,21 @@ Create Mermaid diagrams in markdown files:
 
 ### Design Principles
 Apply and document these production patterns:
-- 12-Factor App methodology
-- Defense in depth (security layers)
+- **12/15-Factor App methodology** — explicit design intent, documented factor-by-factor in `design-principles.md`. Config strictly from the environment (no config in code), strict dev/prod parity, stateless processes, port binding, disposability/graceful shutdown, logs as event streams to **stdout** (per `observability-contract.md` — the app never owns log files/rotation). Carry the 15-factor extensions: **API-first**, **telemetry** (RED metrics + traces + structured logs per the observability contract), and **authentication/authorization as a first-class concern** (per `security-defaults.md`).
+- Defense in depth (security layers) — aligns with `security-defaults.md` (input validation at the boundary, parameterized queries, output encoding, SSRF allowlist, secrets from env/secret-manager, per-object default-deny authz, security headers + strict CORS + secure cookies)
+- Clean/Hexagonal layering with inward-only dependencies (see the Architecture-Style & Layering ADR; mechanically enforced by software-engineer)
 - Circuit breaker, retry, timeout patterns
-- Idempotency for all write operations
+- Idempotency for all write operations (realized as the reusable `IdempotencyKey` header contract in Phase 4)
 - Eventual consistency where appropriate
 - Zero-trust networking
+
+### Phase 2 Quality Bar (gate — do not proceed to Phase 3 until all true)
+
+- [ ] Architecture-style & layering ADR emitted, declaring the inward-only dependency-direction law + the `make arch` gate software-engineer will enforce.
+- [ ] Feature-flag provider ADR emitted (OpenFeature provider + env/config fallback + per-flag safe defaults).
+- [ ] `Compliance & Controls` subsection produced with a resolved scope (frameworks scoped IN, or explicit `out of scope — no <signal>`); any cited control id/article/clock is `[verified]` live or marked `not verified`.
+- [ ] 12/15-factor design intent documented factor-by-factor in `design-principles.md`.
+- [ ] **`security-defaults checklist passes`** — the design leaves a concrete place for every secure-by-default control (boundary validation, parameterized data access, per-object default-deny authz, secrets from env/secret-manager, security headers/CORS/cookies) so the BUILD agents can ship it without retrofit.
 
 **Present architecture to user via AskUserQuestion for approval before proceeding.**
 
@@ -481,12 +542,146 @@ Generate API contracts at `api/` (or `paths.api_contracts` from config) at the p
 - **AsyncAPI specs** for event-driven interfaces
 - **API versioning strategy** documented (URL path vs header)
 
+The architect OWNS the cross-skill API contracts below. software-engineer (runtime mapping), technical-writer (error table/docs), and code-reviewer (consume + verify) READ these — they are defined ONCE here as reusable OpenAPI components and `$ref`'d everywhere.
+
+### Canonical error contract — RFC 9457 `Problem` (application/problem+json)
+
+**Replace the bespoke `{code, message, details, trace_id}` envelope.** The canonical error contract is RFC 9457 `application/problem+json`. Define a single reusable component schema named **`Problem`** in `api/openapi/components.yaml` (or the shared `components` block) and `$ref` it from EVERY error response (4xx/5xx). The architect OWNS this schema.
+
+```yaml
+components:
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 problem detail. The canonical error body for every 4xx/5xx response.
+      required: [type, title, status]
+      properties:
+        type:     { type: string, format: uri-reference, default: "about:blank",
+                    description: "URI reference identifying the problem type (stable per error code)." }
+        title:    { type: string, description: "Short, human-readable summary; stable per type." }
+        status:   { type: integer, format: int32, minimum: 100, maximum: 599 }
+        detail:   { type: string, description: "Human-readable explanation specific to this occurrence." }
+        instance: { type: string, format: uri-reference, description: "URI reference identifying this occurrence." }
+        # standard extensions (cross-skill contract):
+        trace_id: { type: string, description: "Correlation id; matches the observability-contract trace_id." }
+        errors:
+          type: array
+          description: "Field-level validation errors."
+          items:
+            type: object
+            properties:
+              field:   { type: string, description: "Field name OR JSON Pointer (e.g. /items/0/qty)." }
+              pointer: { type: string }
+              detail:  { type: string }
+```
+
+Rules:
+- Every error response sets **`Content-Type: application/problem+json`** and `$ref`s `#/components/schemas/Problem` — no inline error bodies, no second error shape anywhere in the spec.
+- `trace_id` is the SAME correlation id as the observability contract's `trace_id` (read from the live span). Do not invent a parallel id.
+- **Error catalog is the source of truth for the values.** `Problem.type`/`title`/`status` are populated at runtime from a single error-catalog module (`libs/shared/errors/catalog.*`) with entries `{ code, http_status, title, message_template, remediation, docs_anchor }`. BOTH the runtime mapper (app error → `Problem`) and the technical-writer's docs error table READ this one catalog. The architect specifies the catalog's existence + shape in an ADR / scaffold stub; software-engineer implements the mapping.
+
+### Reusable `IdempotencyKey` header — REQUIRED on all unsafe POST/PATCH
+
+Declare a reusable header parameter and require it on every non-idempotent mutation:
+
+```yaml
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: >
+        Client-generated key. Replaying the same key with the SAME request returns the original
+        result (replay). Reusing a key with a DIFFERENT request body returns 409 Conflict; a malformed
+        key returns 422. Servers persist key→result for a documented retention window.
+```
+
+- Every unsafe `POST`/`PATCH` (and any non-idempotent `PUT`/`DELETE`) `$ref`s `parameters/IdempotencyKey` and documents `409` (key reuse with mismatched body) and `422` (malformed key) responses — both `$ref` `Problem`.
+- This is the spec-level realization of the "idempotency for all write operations" design principle.
+
+### Reusable `CursorPage<T>` pagination — REQUIRED on every list endpoint
+
+Every list/collection endpoint returns the cursor-page envelope (cursor-based for production; `offset` only for admin/internal):
+
+```yaml
+components:
+  schemas:
+    PageInfo:
+      type: object
+      required: [has_more, limit]
+      properties:
+        next_cursor: { type: string, nullable: true, description: "Opaque cursor for the next page; null at the end." }
+        has_more:    { type: boolean }
+        limit:       { type: integer, minimum: 1 }
+    # CursorPage<T> is composed per resource: data[] of T + page_info.
+    # e.g. UserPage: { allOf: [ { properties: { data: { type: array, items: { $ref: '#/components/schemas/User' } },
+    #                                            page_info: { $ref: '#/components/schemas/PageInfo' } } } ] }
+```
+
+- Shape is fixed: `data[]` (the items) + `page_info { next_cursor, has_more, limit }`. Every list endpoint `$ref`s `PageInfo` and supplies a typed `data[]`.
+
+### OpenAPI Governance — validate + lint, BLOCK handoff until clean
+
+After writing `api/openapi/*.yaml`, the spec is NOT handed off until it is **valid AND clean**:
+
+1. **Structural validation** — run an OpenAPI 3.1 validator (e.g. `redocly lint` / `swagger-cli validate` / `openapi-spec-validator`). Spec must parse and be schema-valid.
+2. **Spectral ruleset lint** — author/emit a default ruleset at **`api/.spectral.yaml`** (a new artifact this skill OWNS) and run `spectral lint api/openapi/*.yaml`. The default ruleset MUST assert at minimum:
+   - extends `spectral:oas`;
+   - every operation has an `operationId`, `summary`, and `tags`;
+   - every `4xx`/`5xx` response `$ref`s `#/components/schemas/Problem` and uses `application/problem+json`;
+   - every unsafe `POST`/`PATCH` references `parameters/IdempotencyKey`;
+   - every list/array-returning operation uses the `PageInfo`/cursor-page envelope;
+   - no inline error schemas; security scheme declared; no `$ref` to undefined components.
+3. **BLOCKING gate:** any validator error or Spectral error blocks the phase. Handoff to software-engineer/technical-writer happens only on validator exit 0 AND `spectral lint` with zero errors (warnings recorded). Cite the actual tool output — never assert "the spec is clean" without an observed exit 0.
+
+### Performance Budget Artifact — `docs/architecture/performance-budget.yaml` (single source of truth)
+
+Emit `docs/architecture/performance-budget.yaml` per the shared PERFORMANCE BUDGET contract. This is the ONE place perf targets live; frontend/qa/sre/devops READ it and MUST NOT hardcode 500ms/200KB. It is ALWAYS emitted (see Always-Resolved Defaults) — even in Express/Standard mode resolve a sensible default from the chosen scale + data-type.
+
+Shape:
+```yaml
+# docs/architecture/performance-budget.yaml
+api:
+  "GET /users/{id}":      { p95_ms: 300, p99_ms: 800, throughput_rps: 200, error_rate_pct: 0.5 }
+  "POST /orders":         { p95_ms: 500, p99_ms: 1200, throughput_rps: 100, error_rate_pct: 1.0 }
+web_vitals:
+  lcp_ms: 2500
+  inp_ms: 200
+  cls: 0.1
+bundle:
+  main:   { max_kb: 200 }
+  vendor: { max_kb: 350 }
+```
+
+**Default-resolution table** (apply when the user gives no explicit numbers — derive from scale + data-pattern; route-level rows default to the per-tier API row):
+
+| Scale / data-type | api p95 / p99 (ms) | throughput (rps) | error_rate (%) | web_vitals (lcp/inp/cls) | bundle main (KB) |
+|-------------------|--------------------|--------------------|------------------|--------------------------|-------------------|
+| Small / balanced-CRUD (default) | 500 / 1200 | 50 | 1.0 | 2500 / 200 / 0.1 | 200 |
+| Medium / read-heavy | 300 / 800 | 200 | 0.5 | 2000 / 200 / 0.1 | 200 |
+| Medium / write-heavy | 500 / 1500 | 150 | 1.0 | 2500 / 200 / 0.1 | 200 |
+| Large / high-availability | 200 / 500 | 1000 | 0.1 | 1800 / 150 / 0.1 | 180 |
+| Real-time | 150 / 400 | 500 | 0.5 | 2000 / 100 / 0.1 | 200 |
+
+These align with the latency/availability rows in the Phase 1 fitness function and the `http_request_duration_seconds` instrument in `observability-contract.md` (note the budget is in **ms** for human-readability; the runtime histogram is in **seconds**).
+
 Standards enforced:
-- Consistent error response format (`{code, message, details, trace_id}`)
-- Pagination (`cursor-based` for production, `offset` only for admin)
+- **Canonical error body is RFC 9457 `Problem`** (above) — no `{code, message, details, trace_id}` envelope.
+- Pagination via the reusable `CursorPage<T>` / `PageInfo` envelope (`cursor-based` for production, `offset` only for admin).
+- Idempotency via the reusable `IdempotencyKey` header on all unsafe writes.
 - Rate limiting headers (`X-RateLimit-*`)
-- HATEOAS links where appropriate
-- Request ID propagation (`X-Request-ID`)
+- Request ID propagation (`X-Request-ID`) — echoed into the log `request_id` field per the observability contract.
+
+### Phase 4 Quality Bar (gate — do not hand off until all true)
+
+- [ ] Reusable `Problem` schema defined ONCE; every 4xx/5xx response `$ref`s it and serves `application/problem+json`; zero inline error bodies.
+- [ ] Error-catalog source-of-truth (`libs/shared/errors/catalog.*` shape) specified for runtime + docs to read.
+- [ ] `IdempotencyKey` header declared once and `$ref`'d on every unsafe POST/PATCH, with 409/422 responses.
+- [ ] `PageInfo`/cursor-page envelope declared once and used by every list endpoint.
+- [ ] `api/.spectral.yaml` default ruleset emitted; OpenAPI validator AND `spectral lint` both run with **zero errors** (observed exit 0) before handoff.
+- [ ] `docs/architecture/performance-budget.yaml` emitted with a resolved budget (explicit numbers or default-table row); no hardcoded perf targets elsewhere.
 
 ## Phase 5: Data Model Design
 
@@ -547,10 +742,13 @@ docs/architecture/
 │   │   ├── c4-container.md
 │   │   └── sequence-*.md
 │   ├── tech-stack.md
-│   └── design-principles.md
+│   ├── design-principles.md
+│   └── performance-budget.yaml      # single source of truth — frontend/qa/sre/devops read this
 api/
 │   ├── openapi/
-│   │   └── *.yaml
+│   │   ├── *.yaml
+│   │   └── components.yaml           # reusable Problem / IdempotencyKey / PageInfo components
+│   ├── .spectral.yaml                # default lint ruleset (validate+lint gate)
 │   ├── grpc/
 │   │   └── *.proto
 │   └── asyncapi/
@@ -613,6 +811,12 @@ Shipyard/solution-architect/
 | Same architecture for $200/mo and $20K/mo | Budget changes everything — serverless vs dedicated, managed vs self-hosted |
 | Shared database across services | Each service owns its data, communicate via APIs/events |
 | No API versioning strategy | Decide v1 URL path versioning from day one |
+| Bespoke `{code, message, details}` error envelope | Use the reusable RFC 9457 `Problem` schema; `$ref` it from every error response; `application/problem+json` |
+| Inventing a parallel error/trace id | `Problem.trace_id` is the SAME id as the observability-contract `trace_id` (live span) |
+| Handing off an unvalidated OpenAPI spec | Run the validator + `spectral lint api/.spectral.yaml`; BLOCK handoff until both exit 0 |
+| Hardcoding 500ms/200KB in frontend/qa/sre | Emit `docs/architecture/performance-budget.yaml`; downstream skills READ it |
+| Naming a regulation without designing the control | Design audit-log/encryption/RBAC/retention/residency/consent INTO the system; record in Compliance & Controls |
+| Citing a control id / statutory clock from memory | Verify it live against the official source this session, or mark `not verified` |
 | Skipping ADRs | Future-you needs to know WHY, not just WHAT |
 | Over-engineering auth | Use managed auth (Auth0/Cognito) unless compliance requires self-hosted |
 | Ignoring multi-tenancy from start | Retrofitting tenant isolation is 10x harder than designing it in |

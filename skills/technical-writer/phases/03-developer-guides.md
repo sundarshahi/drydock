@@ -22,7 +22,8 @@ Enable a new developer to go from zero to productive. Write task-oriented guides
 
 Generate `docs/getting-started/quickstart.md`:
 
-1. **Prerequisites** — List runtime, Docker, and tools with exact version numbers and install links (3 items max)
+0. **Recommended first run — Dev Container** — Lead with the `.devcontainer` path (the `.devcontainer/` is emitted by **devops**, not this skill). State: "Open in VS Code → *Reopen in Container*, or `devcontainer up`, and the environment is provisioned for you." This is the fastest, most reproducible onboarding. Only if a contributor opts out do they follow the manual steps below.
+1. **Prerequisites** (manual path) — List runtime, Docker, and tools with exact version numbers and install links (3 items max)
 2. **Clone and install** — Exact commands from clone to dependency install
 3. **Configure environment** — Copy `.env.example`, document which values must be changed
 4. **Start infrastructure** — `docker compose up -d` or equivalent
@@ -33,6 +34,8 @@ Generate `docs/getting-started/quickstart.md`:
 9. **Next steps** — Links to local development guide, architecture overview, contributing guide
 
 The quickstart MUST achieve a working local environment in under 10 minutes. Move deep configuration to separate pages.
+
+**Runnable examples:** every fenced command block here must be self-contained and copy-pasteable (no `...`, no invented service names) — the devops-owned `docs-examples` CI job extracts and executes these blocks against the `.devcontainer`/CI image and fails on a non-zero exit. Your job is to make the examples real; devops owns the extraction job.
 
 ## 3.3 — Local Development Setup
 
@@ -98,18 +101,47 @@ Generate `docs/operations/deployment.md`:
 3. **Standard deployment** — Step-by-step from PR merge to production rollout
 4. **Emergency deployment** — Manual process when CI is unavailable
 5. **Rollback procedure** — Commands for rolling back to previous and specific versions
-6. **Feature flags** — How to toggle features without deployment
+6. **Feature flags** — How to toggle features without deployment. Document the OpenFeature client at `libs/shared/feature-flags/` and the checked-in registry `config/feature-flags.yaml` (each flag: `{ key, type, owner, default, created, removal_by }`). List flags FROM the registry — do not invent flag keys. Note the `removal_by` date so stale flags get cleaned up.
 7. **Database migrations** — How migrations run during deployment, rollback procedures
+
+Do NOT hardcode performance numbers (deploy gates, latency/size budgets) in this guide — reference `docs/architecture/performance-budget.yaml` as the source. The budget-ref lint fails on a hardcoded `500ms`/`200KB`.
 
 ## 3.9 — Coding Conventions
 
 Generate `docs/guides/coding-conventions.md`:
 
 1. **Naming conventions** — Extracted from linter configs and existing code patterns
-2. **File organization** — Directory structure conventions per service
-3. **Error handling patterns** — How errors are created, propagated, and logged
-4. **Logging conventions** — Log levels, structured fields, when to log what
+2. **File organization** — Directory structure conventions per service. State the **inward-only dependency law** from `architecture-boundaries.md` and that `make arch` (the fitness gate) fails on an outward dependency — document what IS enforced, not aspiration.
+3. **Error handling patterns** — Errors map to RFC 9457 `application/problem+json` via the error-catalog module `libs/shared/errors/catalog.*` (the single source the docs error table also reads). Show how a domain error → catalog entry → `Problem` body; do NOT document a bespoke `{code,message,details}` envelope.
+4. **Logging conventions** — Structured JSON to **stdout only**, with the exact fields from `observability-contract.md` (`timestamp, level, message, service, env, trace_id, span_id, request_id`, `error.type`/`error.stack` on error). `trace_id`/`span_id` come from the **live span context**, never fabricated. PII/secrets are never logged. Metric/log/span names referenced here MUST be the contract names (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight`, `*_pool_*`) — no invented names.
 5. **Code examples** — "Good" examples from the actual codebase (not invented patterns)
+
+## 3.10 — Monitoring Guide
+
+Generate `docs/operations/monitoring.md`:
+
+1. **Golden signals** — Document the RED metrics by their EXACT contract names: `http_requests_total` (rate + errors via `status_class`), `http_request_duration_seconds` (latency histogram, in **seconds**, with **exemplars** that link a slow bucket to its trace), `http_requests_in_flight` (concurrency). For resource pools, the USE metrics `*_pool_connections_in_use/_max/_idle`, `*_pool_wait_seconds`, `*_pool_acquire_errors_total`.
+2. **Logs↔traces correlation** — Explain that `trace_id` joins a structured log line, its span, and the problem+json error body; how to pivot from a log to a trace.
+3. **Where to look** — Link to actual Grafana dashboards/alerts (owned by devops/sre); this page is a summary + index, not a second copy.
+
+**Hard rule:** reference ONLY metric/log/span names declared in `observability-contract.md`. Naming a metric no code emits (e.g. `request_latency_ms`) makes a reader build a "No data" dashboard — the metric-name lint greps this page against the contract and FAILS on any unlisted name. Do not hardcode SLO/latency numbers here either; cite `docs/architecture/performance-budget.yaml`.
+
+## 3.11 — Governance & DX Files
+
+Generate the repository governance and developer-experience files (respect Brownfield Awareness — never overwrite an existing one; extend instead):
+
+| File | Content |
+|------|---------|
+| `README.md` (root, GENERATED) | Value prop (one paragraph), status **badges** (CI, coverage, license, docs), a quickstart that leads with the `.devcontainer` first-run path, and a **link tree** to `docs/` sections (getting-started, architecture, api-reference, guides, operations). Keep it generated from project metadata + the doc sitemap so links stay valid. |
+| `CONTRIBUTING.md` | Branch/PR/commit conventions (Conventional Commits if changelog automation uses release-please), how to run tests + the docs gates locally, link to CODE_OF_CONDUCT. |
+| `CODE_OF_CONDUCT.md` | Contributor Covenant; fill the contact from project metadata. |
+| `SECURITY.md` | Supported versions, private vulnerability-reporting channel, response SLA. Align with `security-defaults.md`. |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Checklist: tests, docs updated, changeset added, gates green. |
+| `.github/ISSUE_TEMPLATE/` | `bug_report.yml`, `feature_request.yml`, `config.yml` (structured forms). |
+| `.github/CODEOWNERS` | Map paths → owning teams (docs → technical-writer/maintainers, `api/` → backend, `libs/shared/errors/` → backend, etc.). |
+| Changelog automation | **release-please** (`release-please-config.json` + `.release-please-manifest.json`) OR **Changesets** (`.changeset/config.json`). CHANGELOG.md becomes **bot-driven** — document the workflow; do not hand-edit the changelog. |
+
+These are real governance artifacts, not prose: the PR template enforces the changeset/docs checklist, CODEOWNERS enforces review routing, and the changelog automation is wired into the release workflow (a manual CHANGELOG edit without a changeset fails the release check).
 
 ## Output Deliverables
 
@@ -125,14 +157,28 @@ Generate `docs/guides/coding-conventions.md`:
 | Service map | `docs/architecture/service-map.md` |
 | ADR summaries | `docs/architecture/decisions/<NNN-title>.md` |
 | Deployment guide | `docs/operations/deployment.md` |
+| Monitoring guide | `docs/operations/monitoring.md` |
+| Root README (GENERATED) | `README.md` |
+| Contributing guide | `CONTRIBUTING.md` |
+| Code of Conduct | `CODE_OF_CONDUCT.md` |
+| Security policy | `SECURITY.md` |
+| PR template | `.github/PULL_REQUEST_TEMPLATE.md` |
+| Issue templates | `.github/ISSUE_TEMPLATE/*` |
+| Code owners | `.github/CODEOWNERS` |
+| Changelog automation config | `release-please-config.json` + `.release-please-manifest.json` OR `.changeset/config.json` |
 
 ## Validation Loop
 
 Before moving to Phase 4:
-- Quickstart achieves a working environment in under 10 minutes (mentally walk through every step)
+- Quickstart leads with the `.devcontainer` first-run path and still achieves a working environment in under 10 minutes (mentally walk through every step)
 - Every environment variable is documented with name, type, required/optional, default, description
 - Every test command actually works (verify against project build files)
 - Architecture overview matches the actual system, not an aspirational design
+- Monitoring guide names ONLY `observability-contract.md` metrics/log fields/span attrs (metric-name lint clean); no hardcoded budget numbers (cite `performance-budget.yaml`)
+- Coding-conventions error/logging sections reference the error-catalog + RFC 9457 `Problem` + stdout JSON log fields, not invented patterns
+- Feature-flag docs list flags from `config/feature-flags.yaml`; none invented
+- Governance/DX files generated and not overwriting existing ones (Brownfield); changelog is bot-driven
+- All fenced runnable examples are self-contained so the devops `docs-examples` job passes
 - All guides end with "Next steps" linking to related pages
 - No fabricated content — every statement traces to a source artifact
 
