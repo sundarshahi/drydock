@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping session-guard\" >&2; exit 0; fi; bash \"$_R/hooks/session-guard.sh\"",
+            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping session-guard\" >&2; exit 0; fi; if [ ! -f \"$_R/hooks/session-guard.sh\" ]; then echo \"drydock: session-guard.sh missing; skipping\" >&2; exit 0; fi; bash \"$_R/hooks/session-guard.sh\"",
             "timeout": 10
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping secret-guard\" >&2; exit 0; fi; bash \"$_R/hooks/secret-guard.sh\"",
+            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping secret-guard\" >&2; exit 0; fi; if [ ! -f \"$_R/hooks/secret-guard.sh\" ]; then echo \"drydock: secret-guard.sh missing; skipping\" >&2; exit 0; fi; bash \"$_R/hooks/secret-guard.sh\"",
             "timeout": 15
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping secret-guard\" >&2; exit 0; fi; bash \"$_R/hooks/secret-guard.sh\"",
+            "command": "_R=\"${CLAUDE_PLUGIN_ROOT}\"; if [ -z \"$_R\" ]; then echo \"drydock: CLAUDE_PLUGIN_ROOT is unset; skipping secret-guard\" >&2; exit 0; fi; if [ ! -f \"$_R/hooks/secret-guard.sh\" ]; then echo \"drydock: secret-guard.sh missing; skipping\" >&2; exit 0; fi; bash \"$_R/hooks/secret-guard.sh\"",
             "timeout": 15
           }
         ]

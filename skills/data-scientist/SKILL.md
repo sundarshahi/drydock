@@ -111,6 +111,12 @@ Every prompt template, serving endpoint, caching layer, pipeline, retraining job
 - **Gate model-triggered tool/function calls.** Allowlist the callable tools, validate arguments against a schema, enforce least privilege, and require confirmation for irreversible/destructive actions. The model gets no ambient authority — fallback chains and agentic loops included.
 - **Guard the prompt-injection trust boundary.** Keep system instructions separate from untrusted content (RAG/retrieved docs, web pages, user text, tool results). Fetched content must not silently rewrite instructions or exfiltrate context. SSRF-allowlist any user/model-influenced outbound URL (tool-call fetch, webhook, retrieval source).
 
+**LLM/AI security (OWASP LLM Top 10 2025) — where each control lives.** Beyond the four defaults above, the build-side LLM controls are asserted in the phase that owns them (cross-ref `security-defaults.md` "LLM / AI security defaults"):
+
+- **LLM03 model/dataset provenance & supply chain** and **LLM08 vector-store/RAG isolation** → Phase 5 (`phases/05-ml-infrastructure.md`).
+- **LLM04 data-poisoning defenses** (provenance, source allowlist, anomaly detection, integrity check) → Phase 4 (`phases/04-data-pipeline.md`).
+- **LLM09 grounding & misinformation** (RAG grounding, source citation, AI-output labeling, human oversight on high-stakes) and **LLM10 runtime consumption limits** (size/token caps, rate + cost quotas, timeouts/circuit-breakers) → Phase 2 (`phases/02-llm-optimization.md`).
+
 Each BUILD phase (2, 3, 4, 5) ends by asserting **`security-defaults checklist passes`** in its receipt; a phase that cannot assert it is not complete. Deferred items are logged as an explicit HARDEN hand-off, never silently skipped.
 
 ## Input Classification
@@ -143,10 +149,10 @@ drydock/data-scientist/
 | Phase | File | When to Load | Purpose |
 |-------|------|--------------|---------|
 | 1 | phases/01-system-audit.md | Always first | Detect AI/ML/LLM usage, classify system, analyze current patterns, map API calls and token flows, cost analysis |
-| 2 | phases/02-llm-optimization.md | After phase 1 (if LLM usage found) | Prompt engineering, token optimization, semantic caching, model selection, fallback chains, quality metrics |
+| 2 | phases/02-llm-optimization.md | After phase 1 (if LLM usage found) | Prompt engineering, token optimization, semantic caching, model selection, fallback chains, quality metrics, grounding & misinformation (LLM09), runtime consumption limits (LLM10) |
 | 3 | phases/03-experiment-framework.md | After phase 2 | A/B testing infrastructure, evaluation metrics, statistical significance, experiment tracking, feature flags |
-| 4 | phases/04-data-pipeline.md | After phase 3 | Analytics event schema, ETL pipeline architecture, data warehouse design, real-time vs batch, dashboards |
-| 5 | phases/05-ml-infrastructure.md | After phase 4 (if custom ML models) | Model serving, model monitoring (drift), retraining pipelines, feature store, model registry |
+| 4 | phases/04-data-pipeline.md | After phase 3 | Analytics event schema, ETL pipeline architecture, data warehouse design, real-time vs batch, dashboards, data-poisoning defenses (LLM04) |
+| 5 | phases/05-ml-infrastructure.md | After phase 4 (if custom ML models) | Model serving, model monitoring (drift), retraining pipelines, feature store, model registry, model/dataset provenance & supply chain (LLM03), vector-store/RAG security (LLM08) |
 | 6 | phases/06-cost-modeling.md | After all prior phases | API cost analysis, budget projections, cost optimization, usage forecasting, ROI analysis, scientific studies |
 
 ## System Classification Guide
@@ -181,6 +187,9 @@ Read the relevant phase file before starting that phase. Never read all phases a
 | 13 | Optimizing tokens at expense of quality | Set minimum quality score threshold. Optimization fails if quality drops below threshold. |
 | 14 | Using averages without understanding distribution | Report p50, p95, p99 for latency and token counts. Flag bimodal distributions. |
 | 15 | Copying production data without anonymization | ALWAYS anonymize PII before using production data in experiments. |
+| 16 | Loading models / training on data without provenance | Record source+version+digest for every model AND dataset; verify provenance before promotion (LLM03), allowlist + integrity-check + anomaly-detect training data (LLM04), prefer safetensors over untrusted pickle. See Phases 4–5. |
+| 17 | Shared/unscoped vector store and ungrounded "facts" | Per-tenant namespace isolation + per-retrieval authz on the vector DB (LLM08); ground factual output in RAG with cited sources, label AI output, human-review high-stakes (LLM09). See Phases 2 and 5. |
+| 18 | LLM calls with no size/cost ceiling | Cap input/context + max_tokens, enforce per-user/tenant rate + cost quotas, timeouts + circuit-breakers, cost-spike alerts (LLM10). See Phase 2. |
 
 ## Interaction Style
 
@@ -210,6 +219,7 @@ Read the relevant phase file before starting that phase. Never read all phases a
 - [ ] All prompt optimizations include before/after comparison with quality scores
 - [ ] All pipelines include error handling and data quality checks
 - [ ] No hardcoded credentials, API keys, or PII in any output (env/secret-manager only; PII anonymized before prompts/embeddings/training/analytics)
+- [ ] LLM Top 10 build-side controls asserted in their owning phase: model/dataset provenance + supply chain (LLM03, Phase 5), data-poisoning defenses (LLM04, Phase 4), vector-store/RAG isolation (LLM08, Phase 5), grounding & misinformation (LLM09, Phase 2), runtime consumption limits (LLM10, Phase 2)
 - [ ] `security-defaults checklist passes` — model output treated as untrusted, no secrets/PII in prompts, model-triggered tool-calls gated, prompt-injection trust boundary enforced, SSRF-allowlist on model/user-influenced outbound
 - [ ] Output directory structure matches specification
 

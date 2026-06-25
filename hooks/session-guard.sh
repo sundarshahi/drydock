@@ -3,17 +3,20 @@
 # Detects if the current project was built with Drydock and offers
 # the user a choice: work with the pipeline or without it.
 
-SUITE_DIR="drydock"
+SUITE_DIR="drydock"                              # display name used in the message
+# Anchor to the project root when the harness provides it, so detection does
+# not depend on the process cwd; fall back to cwd-relative otherwise.
+SUITE_PATH="${CLAUDE_PROJECT_DIR:-.}/$SUITE_DIR"
 
 # Only fire if the suite directory exists in the current project
-if [ ! -d "$SUITE_DIR" ]; then
+if [ ! -d "$SUITE_PATH" ]; then
   exit 0
 fi
 
 # Count artifacts for context
-ADR_COUNT=$(find "$SUITE_DIR" -name "ADR-*.md" 2>/dev/null | wc -l | tr -d ' ')
-RECEIPT_COUNT=$(find "$SUITE_DIR/.orchestrator/receipts" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
-PROTOCOL_COUNT=$(find "$SUITE_DIR/.protocols" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+ADR_COUNT=$(find "$SUITE_PATH" -name "ADR-*.md" 2>/dev/null | wc -l | tr -d ' ')
+RECEIPT_COUNT=$(find "$SUITE_PATH/.orchestrator/receipts" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+PROTOCOL_COUNT=$(find "$SUITE_PATH/.protocols" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
 
 cat <<GUARD
 # Drydock Native Project Detected

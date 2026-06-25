@@ -228,9 +228,9 @@ Triggered -> Phase 0: Reconnaissance -> Phase 1: Threat Modeling
 
 Every finding MUST map to the current published standards below. Pull the precise per-finding id (WSTG test id, ASVS requirement id) from the live checklist at audit time — never recall ids from memory (see `drydock/.protocols/grounding-protocol.md`). Derive the human-readable severity (the table above) from the CVSS base score, not ad hoc.
 
-### OWASP Top 10 — 2025 (Web)
+### OWASP Top 10 — 2025 RC1 (Web)
 
-Current edition (released Nov 2025 at OWASP Global AppSec DC, finalized Jan 2026; supersedes 2021). Two new categories (A03, A10); SSRF folded into A01.
+OWASP Top 10:2025 is currently **Release Candidate 1** (published 6 Nov 2025 at OWASP Global AppSec DC) and is **not yet ratified** — **2021 remains the last finalized edition**. Drydock deliberately audits against the 2025 RC1 categories ahead of ratification; the RC1 set may still shift before the final release. Two new categories (A03, A10) and SSRF folded into A01 are RC1 changes. Label reports "OWASP Top 10:2025 RC1".
 
 | ID | Name |
 |----|------|

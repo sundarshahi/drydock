@@ -16,6 +16,8 @@ Everything you emit here touches model input/output, so the LLM/AI defaults appl
 - **No secrets or full PII in prompts or cache keys.** The prompt-library, cache key normalization, and any logged request/response exclude credentials and unanonymized PII. Read API keys from env/secret-manager, never embed them in a prompt template or example.
 - **Gate any tool/function call the model can trigger** in a fallback chain or agentic step (allowlist tools, schema-validate args, least privilege, confirm destructive actions). **SSRF-allowlist** any model/user-influenced outbound URL (retrieval, tool fetch).
 - **Prompt-injection trust boundary:** keep system instructions separate from untrusted/retrieved content; fetched content must not rewrite instructions or exfiltrate context.
+- **Grounding & misinformation (LLM09).** Prefer RAG grounding for factual output and **cite sources**; **label AI-generated output** as such; require **human oversight for high-stakes outputs** (medical, legal, financial, security). Do not present unverified model output as fact — surface confidence and provenance, not just the answer.
+- **Runtime consumption limits (LLM10).** Cap input/context size and `max_tokens` on every call; enforce **per-user/tenant rate + cost quotas**; set **timeouts and circuit-breakers** on model calls (fail closed); **alert on cost spikes**. Cross-ref `security-defaults.md` "Resource-consumption & anti-automation limits".
 
 ## Workflow
 
@@ -88,6 +90,7 @@ Produce `llm-optimization/token-analysis.md` with:
 - Input token reduction strategies (context window optimization, dynamic context selection)
 - Output token control (structured output, max_tokens tuning, stop sequences)
 - Tokenizer-specific optimizations (e.g., tiktoken encoding awareness)
+- **Runtime consumption limits (LLM10):** the per-feature budget is also a *hard cap*, not just a target — cap input/context size and set `max_tokens` on every call; pair with per-user/tenant rate + cost quotas, per-call timeouts and circuit-breakers (fail closed), and a cost-spike alert. Cross-ref `security-defaults.md` "Resource-consumption & anti-automation limits". These caps are security controls (DoS / unbounded-cost), not only cost optimizations.
 
 Include implementation code:
 
@@ -290,6 +293,8 @@ class LLMCacheLayer:
 
 ### Step 4: Quality Metrics Framework
 
+**Grounding & misinformation (LLM09):** for any feature that emits factual claims, the quality framework asserts grounding, not just fluency — prefer RAG grounding and **cite sources** for factual output, **label AI-generated content** as such in the response contract, and route **high-stakes outputs (medical/legal/financial/security) through human oversight** before they act. Unverified model output is never presented as fact; surface confidence + provenance. Add an `ACCURACY`/grounding rubric dimension (does the output cite a retrieved source? are claims attributable?) and treat ungrounded high-stakes answers as a quality failure.
+
 Produce `llm-optimization/quality-metrics.md` with a rubric-based evaluation system:
 
 ```python
@@ -395,11 +400,13 @@ Before proceeding to Phase 3, verify:
 - [ ] Token analysis includes per-feature budgets
 - [ ] Caching strategy includes implementation code
 - [ ] Quality metrics framework is defined with automated checks
+- [ ] Grounding & misinformation (LLM09): factual output is RAG-grounded + source-cited, AI-generated output is labeled, high-stakes outputs require human oversight, unverified output never presented as fact
+- [ ] Runtime consumption limits (LLM10): input/context size + max_tokens capped, per-user/tenant rate + cost quotas, per-call timeouts + circuit-breakers (fail closed), cost-spike alerting
 - [ ] Minimum quality score threshold is set (optimization fails if quality drops below it)
-- [ ] `security-defaults checklist passes` — model output treated as untrusted (cache/evaluator validate before reuse), no secrets/PII in prompts or cache keys, model-triggered tool-calls gated, prompt-injection trust boundary + SSRF allowlist enforced
+- [ ] `security-defaults checklist passes` — model output treated as untrusted (cache/evaluator validate before reuse), no secrets/PII in prompts or cache keys, model-triggered tool-calls gated, prompt-injection trust boundary + SSRF allowlist enforced, factual output grounded/cited + AI-labeled with human oversight on high-stakes (LLM09), runtime consumption limits enforced — size/token caps + quotas + timeouts (LLM10, cross-ref "Resource-consumption & anti-automation limits")
 
 > **GATE: Present optimization results with measured improvements. Wait for user approval before proceeding.**
 
 ## Quality Bar
 
-Every optimization must show before/after metrics, and `security-defaults checklist passes`. "The prompt was improved" is not acceptable. "Input tokens reduced from 1,200 to 680 (-43%), cost per call from $0.045 to $0.022 (-51%), quality score maintained at 8.2/10" is acceptable. Optimizations that reduce quality below the minimum threshold are rejected regardless of cost savings. A deferred security item is logged as an explicit HARDEN hand-off, never silently skipped.
+Every optimization must show before/after metrics, and `security-defaults checklist passes`. "The prompt was improved" is not acceptable. "Input tokens reduced from 1,200 to 680 (-43%), cost per call from $0.045 to $0.022 (-51%), quality score maintained at 8.2/10, max_tokens capped at 800 with a per-tenant 100-req/min + $5/day quota and a 20s circuit-breaker" is acceptable. Optimizations that reduce quality below the minimum threshold are rejected regardless of cost savings; factual features must stay grounded/cited (LLM09) and every call must stay inside its consumption caps (LLM10). A deferred security item is logged as an explicit HARDEN hand-off, never silently skipped.

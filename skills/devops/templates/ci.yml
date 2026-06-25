@@ -77,8 +77,20 @@ jobs:
       - name: gitleaks (secret scan)
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.6
 
+  # ── IaC misconfiguration scan. tfsec + checkov FAIL the pipeline on HIGH (no continue-on-error). ──
+  iac-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: tfsec (fail on HIGH)
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75f86759abcf8071d637d8b21 # v1.0.3
+        with: { working_directory: infrastructure/terraform, additional_args: --minimum-severity HIGH }
+      - name: checkov (fail on HIGH)
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.2937.0
+        with: { directory: infrastructure/terraform, hard_fail_on: HIGH, soft_fail: false }
+
   build-image:
-    needs: [lint, test, arch, sast, lint-pipelines]
+    needs: [lint, test, arch, sast, iac-scan, lint-pipelines]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1

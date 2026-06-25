@@ -21,6 +21,21 @@
 # Intentional, documented bypass (NOT default):
 #   DRYDOCK_ALLOW_SECRET=1   -> allow with a loud warning on stderr.
 #
+# Audit trail: in a Drydock project (a `drydock/` dir exists), every BLOCK and
+# every explicit bypass is appended as one JSON line to
+#   drydock/.orchestrator/audit/secret-guard.jsonl
+# so a reviewer has a durable record even when the bypass is used. Best-effort:
+# audit logging never fails the hook and writes nothing outside a Drydock project.
+#
+# Trust model & fail-open posture (intentional): this hook FAILS OPEN — on any
+# internal error (no temp file, gitleaks misconfigured, nothing to scan) it
+# allows the call rather than blocking legitimate work, so a broken guard never
+# wedges a session. It therefore reduces, not eliminates, risk, and it assumes
+# the plugin directory ($CLAUDE_PLUGIN_ROOT) is trusted installed code: anyone
+# who can rewrite this script can neuter it. Treat the plugin dir as part of
+# your supply chain (pin/verify the install); do not rely on this hook as the
+# only control against committing secrets.
+#
 # Dependency-light: pure bash + coreutils (grep, sed). `jq` and `gitleaks`
 # are used opportunistically if present but are never required.
 # ---------------------------------------------------------------------------
@@ -113,14 +128,33 @@ is_secret_path() {
   return 1
 }
 
+# --- optional audit trail (best-effort; never fails the hook) --------------
+# In a Drydock project, append a one-line JSON record of every block/bypass to
+# drydock/.orchestrator/audit/secret-guard.jsonl. No-op outside a Drydock project.
+audit_log() {
+  # audit_log <event> <detail>
+  _proj="${CLAUDE_PROJECT_DIR:-.}"
+  [ -d "$_proj/drydock" ] || return 0
+  _ad="$_proj/drydock/.orchestrator/audit"
+  mkdir -p "$_ad" 2>/dev/null || return 0
+  _ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)"
+  # JSON-escape backslashes + double-quotes; flatten newlines.
+  _esc() { printf '%s' "${1:-}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' '; }
+  printf '{"ts":"%s","event":"%s","tool":"%s","file":"%s","detail":"%s"}\n' \
+    "$_ts" "$(_esc "${1:-}")" "$(_esc "${TOOL_NAME:-}")" "$(_esc "${FILE_PATH:-}")" "$(_esc "${2:-}")" \
+    >> "$_ad/secret-guard.jsonl" 2>/dev/null || true
+}
+
 # --- loud, documented bypass ----------------------------------------------
 if [ "${DRYDOCK_ALLOW_SECRET:-}" = "1" ]; then
+  audit_log "bypass" "DRYDOCK_ALLOW_SECRET=1 — secret checks disabled for this ${TOOL_NAME:-tool} call"
   {
     echo "=============================================================="
     echo "  !!  DRYDOCK SECRET GUARD BYPASSED (DRYDOCK_ALLOW_SECRET=1)"
     echo "  !!  Secret-path and secret-content checks are DISABLED for"
     echo "  !!  this tool call. This is intentional and on YOU."
-    echo "  !!  Unset DRYDOCK_ALLOW_SECRET to re-enable enforcement."
+    echo "  !!  Logged to drydock/.orchestrator/audit/ if this is a"
+    echo "  !!  Drydock project. Unset DRYDOCK_ALLOW_SECRET to re-enable."
     echo "=============================================================="
   } >&2
   exit 0
@@ -128,6 +162,7 @@ fi
 
 # --- helper: emit a block message and exit 2 -------------------------------
 block() {
+  audit_log "block" "$1"
   {
     echo "BLOCKED by Drydock Secret Guard"
     echo "--------------------------------"

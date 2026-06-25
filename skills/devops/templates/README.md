@@ -10,7 +10,7 @@ actions, and missing `permissions:` blocks slip in. Start from the template; kee
 | `ci.yml` | `.github/workflows/ci.yml` | Build, lint, typecheck, test+coverage, container build, IaC lint, SAST |
 | `pr-checks.yml` | `.github/workflows/pr-checks.yml` | PR-only gates: patch-coverage, frontend perf (lhci + size-limit), stale-flag, docs-examples, lint-the-pipelines |
 | `cd-staging.yml` | `.github/workflows/cd-staging.yml` | Auto-deploy to staging on merge to default branch + smoke + k6 baseline compare |
-| `cd-production.yml` | `.github/workflows/cd-production.yml` | Tag-triggered supply-chain-hardened release: SLSA provenance, cosign sign, syft SBOM, verify-attestation GATE, immutable digest deploy, progressive rollout |
+| `cd-production.yml` | `.github/workflows/cd-production.yml` | Tag-triggered supply-chain-hardened release: SLSA provenance, cosign sign, syft SBOM **signed/attested** (in-toto via `cosign attest`, keyed to the digest), verify-attestation GATE, immutable digest deploy, progressive rollout |
 | `rollout-canary.yaml` | `infrastructure/kubernetes/<service>/rollout.yaml` | Argo Rollouts `Rollout` + `AnalysisTemplate` querying the observability-contract metrics; canary FAIL → auto-abort/rollback |
 
 ## Hard rules (every copy MUST satisfy — recorded in the T7 receipt)
@@ -34,7 +34,15 @@ actions, and missing `permissions:` blocks slip in. Start from the template; kee
    500ms / 200KB. lhci, size-limit, and the k6 baseline compare all read the budget.
 6. **No `|| true`, no `continue-on-error: true` on a gate.** A gate that cannot fail is not a
    gate. Coverage, patch-coverage, arch-boundary (`make arch`), perf, supply-chain-verify,
-   and stale-flag jobs exit non-zero on breach.
+   IaC scan (`tfsec`/`checkov`, fail on HIGH), and stale-flag jobs exit non-zero on breach.
+7. **The release SBOM is SIGNED/ATTESTED, not just attached.** `cd-production.yml` runs
+   `cosign attest` (in-toto SPDX predicate) keyed to the image **digest**, and the pre-deploy
+   gate runs `cosign verify-attestation` against that digest. A loose `sbom.spdx.json` file is
+   not sufficient. See `phases/06-security.md` → "CI/CD & Supply-Chain Platform Security".
+8. **Branch protection enforces the SLSA v1.2 source track.**
+   `scripts/setup-branch-protection.sh` requires signed commits and blocks force-push and
+   branch deletion (`allow_force_pushes: false`, `allow_deletions: false`) in addition to the
+   required status checks + PR review — verified, tamper-evident change history.
 
 ## Placeholder convention
 

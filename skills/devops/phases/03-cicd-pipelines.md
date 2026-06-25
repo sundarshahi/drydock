@@ -44,7 +44,16 @@ The T7 receipt `metrics` records `{actionlint_errors, hadolint_errors, tflint_er
 - **Keyless OIDC only.** `permissions: id-token: write` + the provider's OIDC; assume a role. NO long-lived `AWS_ACCESS_KEY_ID` / `GCP_SA_KEY` secrets. The OIDC trust is a checked-in Terraform module under `infrastructure/security/iam/` (this skill emits it).
 - **Pin every third-party action to a full 40-char commit SHA** (`uses: owner/repo@<sha> # vX.Y.Z`). A bare `@v4` is a supply-chain hole.
 - **`.github/dependabot.yml`** — enable ALL ecosystems present + the `github-actions` ecosystem (bumps the pinned SHAs via PR).
-- **`scripts/setup-branch-protection.sh`** — uses `gh api` to require the EXACT job names (`lint`, `test`, `arch`, `sast`, `patch-coverage`, `frontend-perf`, `stale-flags`, `docs-examples`, `lint-pipelines`) + PR review + a `production` GitHub Environment with required reviewers.
+- **`scripts/setup-branch-protection.sh`** — uses `gh api` to require the EXACT job names (`lint`, `test`, `arch`, `sast`, `patch-coverage`, `frontend-perf`, `stale-flags`, `docs-examples`, `lint-pipelines`) + PR review + a `production` GitHub Environment with required reviewers, AND enforces the **SLSA v1.2 source track**: signed commits required, force-push blocked (`allow_force_pushes: false`), branch deletion blocked (`allow_deletions: false`), and workflow-file changes (`.github/workflows/**`) gated behind review.
+
+### Pipeline execution safety / PPE (CICD-SEC-4, HIGH)
+
+The pipeline runs with credentials and deploy authority — Poisoned Pipeline Execution is treated as RCE. See `phases/06-security.md` → "CI/CD & Supply-Chain Platform Security".
+
+- **Never interpolate `${{ github.event.* }}` into a `run:` step** (PR title/body/branch/label/comment are attacker-controlled). Pass them through `env:` and reference `"$VAR"` so the value can never be evaluated as shell.
+- **Least-privilege `GITHUB_TOKEN`** — `permissions: contents: read` at the top of every workflow; widen per-job only (`packages: write`, `id-token: write`, `attestations: write`) where that job needs it. No workflow-wide write token.
+- **Restrict `pull_request_target` / `workflow_run`** — they run with repo secrets; never check out and execute untrusted fork code under them, and never expose prod secrets/environments to fork PRs.
+- **Runner isolation (CICD-SEC-5)** — prefer ephemeral/hosted runners (one job per VM, destroyed after). If self-hosted, isolate by trust level and NEVER run untrusted PR code on a runner that holds prod credentials.
 
 ### CI Pipeline Stages
 1. **Checkout & cache** — Restore dependency caches
@@ -54,8 +63,9 @@ The T7 receipt `metrics` records `{actionlint_errors, hadolint_errors, tflint_er
 5. **Unit tests** — Parallel execution, coverage reporting
 6. **Integration tests** — Against test containers (testcontainers)
 7. **Security scan** — SAST (Semgrep/CodeQL), dependency audit (Snyk/Trivy)
-8. **Build** — Docker image with content-hash tagging
-9. **Push** — To ECR/GCR/ACR with immutable tags
+8. **IaC scan** — `tfsec`/`checkov` as an actual job that FAILS on HIGH severity (no `continue-on-error`)
+9. **Build** — Docker image with content-hash tagging
+10. **Push** — To ECR/GCR/ACR with immutable tags
 
 ### CD Pipeline Stages (staging — `cd-staging.yml`)
 1. **qa suite via `workflow_call`** — reuse qa's `test.yml` (compose, don't clobber)
@@ -68,8 +78,8 @@ The T7 receipt `metrics` records `{actionlint_errors, hadolint_errors, tflint_er
 1. **Build + push by DIGEST** (immutable; release id == version tag)
 2. **SLSA v1.0 provenance** — `actions/attest-build-provenance` (or slsa-github-generator), keyed to the digest
 3. **Keyless cosign sign** — Sigstore Fulcio cert + Rekor transparency log (no key material)
-4. **syft SBOM** — SPDX, attached to the GitHub Release; **reconcile** with `drydock/security-engineer/supply-chain/sbom.json` via `reconcile-sbom.sh`
-5. **PRE-DEPLOY VERIFY GATE** — `gh attestation verify` + `cosign verify` against the digest; an unverifiable artifact **BLOCKS the deploy**
+4. **syft SBOM, SIGNED + ATTESTED** — SPDX generated, then `cosign attest` (in-toto SPDX predicate) keyed to the image **digest** so the SBOM is tamper-evident and identity-bound, not just a loose release file; also attached to the GitHub Release and **reconciled** with `drydock/security-engineer/supply-chain/sbom.json` via `reconcile-sbom.sh`
+5. **PRE-DEPLOY VERIFY GATE** — `gh attestation verify` + `cosign verify` + `cosign verify-attestation` (SBOM predicate) against the digest; an unverifiable artifact or missing/failed SBOM attestation **BLOCKS the deploy**
 6. **Required-reviewer approval** — `production` GitHub Environment
 7. **Progressive rollout** — Argo Rollouts canary on the verified digest; analysis FAIL → auto-abort/rollback
 8. **Post-deploy verification** — automated smoke + synthetic monitoring on the contract metrics

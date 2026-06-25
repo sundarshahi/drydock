@@ -66,13 +66,20 @@ Security defaults are written into the first draft, not bolted on after the audi
 
 **CSP + security headers.** EMIT framework-level security headers via `next.config.*` `headers()` (or middleware / framework equivalent):
 - `Content-Security-Policy` that blocks inline script — **no `unsafe-inline`, no `unsafe-eval`** (use nonces/hashes for any required inline). Defense-in-depth against XSS.
-- `Strict-Transport-Security` (HSTS), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or CSP `frame-ancestors`), `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`.
+- **Trusted Types** — add CSP `require-trusted-types-for 'script'` plus a named `trusted-types` policy where the framework supports it, to neutralize DOM-XSS sinks at the source (cross-ref `security-defaults.md` → "Context-aware output encoding & safe templating").
+- `Strict-Transport-Security` set to **`max-age=15552000; includeSubDomains; preload`** (≥180 days), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or CSP `frame-ancestors`), `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`.
+- **Cross-origin isolation** — `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin` on all responses; add `Cross-Origin-Embedder-Policy: require-corp` where cross-origin isolation is actually needed (e.g. `SharedArrayBuffer`).
+- **Cache-Control: `no-store`** on every response carrying sensitive data or an authenticated page (add `Pragma: no-cache` for legacy proxies) so credentials/PII are never cached by the browser or intermediaries.
+
+**Subresource Integrity (SRI).** Prefer **self-hosting third-party scripts**. Every remaining external/CDN `<script>` and `<link rel="stylesheet">` MUST carry an `integrity` hash **and** a `crossorigin` attribute so a tampered CDN asset fails to load rather than executing.
+
+**Cookie prefixes.** Name auth/session cookies with the **`__Host-`** prefix (or `__Secure-` when a parent-domain scope is required) IN ADDITION to `HttpOnly` + `Secure` + `SameSite` — the prefix is enforced by the browser and proves Secure/host-only scoping (cross-ref `security-defaults.md` → "Session & self-contained-token lifecycle").
 
 **Sanitization wrapper.** EMIT `frontend/app/lib/sanitize.ts` — a DOMPurify wrapper with a strict allowlist. **No raw `dangerouslySetInnerHTML`** anywhere: any HTML injection must pass through this sanitizer first. Add an ESLint rule (`react/no-danger`) so unsanitized usage fails CI; render untrusted strings as text by default.
 
 **Other secure defaults (carry forward):**
 - No secrets in the client bundle — only `NEXT_PUBLIC_*` config values are exposed; credentials/tokens stay server-side (cross-ref `security-defaults.md`).
-- Auth/session cookies are `HttpOnly` + `Secure` + `SameSite=Lax|Strict`; no auth tokens or PII in `localStorage` (enforced in Phase 4 auth).
+- Auth/session cookies are `HttpOnly` + `Secure` + `SameSite=Lax|Strict` and carry a `__Host-`/`__Secure-` prefix; no auth tokens or PII in `localStorage` (enforced in Phase 4 auth).
 
 ## Validation Loop
 
@@ -81,7 +88,9 @@ Before moving to Phase 3:
 - Light/dark themes render
 - Theme toggle works
 - Tailwind config extends with tokens
-- CSP + security headers emitted (no `unsafe-inline`/`unsafe-eval`); `lib/sanitize.ts` (DOMPurify) present; `react/no-danger` ESLint rule on
+- CSP + security headers emitted (no `unsafe-inline`/`unsafe-eval`; Trusted Types `require-trusted-types-for 'script'` where supported); COOP/CORP `same-origin` set; HSTS `max-age>=15552000; includeSubDomains; preload`; `Cache-Control: no-store` on authenticated/sensitive responses
+- SRI `integrity` + `crossorigin` on every external/CDN `<script>`/`<link>` (or third-party scripts self-hosted); auth/session cookies carry a `__Host-`/`__Secure-` prefix
+- `lib/sanitize.ts` (DOMPurify) present; `react/no-danger` ESLint rule on
 
 **Do NOT present design system for approval here — it's defaults. Move to components.**
 
@@ -92,4 +101,4 @@ Before moving to Phase 3:
 - Spacing scale covers layout needs
 - No hardcoded visual values
 - This is a FUNCTIONAL foundation, not the final design
-- **`security-defaults checklist passes`** — CSP/security headers served (no `unsafe-inline`/`unsafe-eval`), DOMPurify sanitizer in place with no unsanitized `dangerouslySetInnerHTML`, no secrets in the client bundle, secure-cookie defaults established for Phase 4 auth
+- **`security-defaults checklist passes`** — CSP/security headers served (no `unsafe-inline`/`unsafe-eval`; Trusted Types directive where supported), COOP/CORP `same-origin` + HSTS `max-age>=15552000; includeSubDomains; preload` + `Cache-Control: no-store` on sensitive responses, SRI `integrity`+`crossorigin` on external scripts (or self-hosted), `__Host-`/`__Secure-` prefixed secure cookies, DOMPurify sanitizer in place with no unsanitized `dangerouslySetInnerHTML`, no secrets in the client bundle

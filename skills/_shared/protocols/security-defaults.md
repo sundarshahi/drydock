@@ -1,4 +1,4 @@
-# Security Defaults — Secure-by-Default BUILD Contract (OWASP ASVS L2 / Proactive Controls)
+# Security Defaults — Secure-by-Default BUILD Contract (OWASP ASVS 5.0 L2 / Proactive Controls)
 
 **Core principle: Every BUILD agent ships secure-by-default code at write time — you do not wait for the HARDEN audit to add validation, authz, or output encoding. The audit confirms; it does not retrofit the basics.**
 
@@ -85,11 +85,73 @@ These are non-negotiable defaults for any code that touches external input, data
 
 ---
 
+## Strong cryptography: hashing, encryption, randomness  (ASVS V11 / OPC C8)
+
+- **Hash credentials with a memory-hard KDF** — Argon2id (preferred), scrypt, or bcrypt, each with a per-user salt and a tuned cost factor. NEVER store passwords in plaintext or reversible encryption; NEVER use fast/raw hashes (MD5, SHA-1, unsalted SHA-256) for credentials.
+- **Encrypt sensitive data with authenticated encryption** — AES-256-GCM or ChaCha20-Poly1305. No ECB, no unauthenticated modes, no hand-rolled crypto. Use a fresh random nonce/IV per message; never reuse an IV under the same key.
+- **Generate every security-bearing value from a CSPRNG** — session ids, reset/verification tokens, API keys, OTPs, and salts come from `crypto.randomBytes` / `secrets.token_urlsafe` / `crypto/rand`. NEVER `Math.random()` / `random.random()` / `rand()`.
+- **TLS in transit on every hop** — enforce TLS 1.2+ (prefer 1.3), including service-to-service; no plaintext fallback. Key material is read from the secret manager, is rotatable, and is never logged.
+- Pick algorithms that are current at build time (cross-reference `freshness-protocol.md`); do not pin to one a later audit will flag as deprecated.
+
+---
+
+## Authentication & credential-handling defaults  (ASVS V6 / OPC C6)
+
+- **Throttle and lock out credential endpoints** — login, password-reset, OTP/MFA-verify, and token endpoints get per-account AND per-IP rate limiting plus progressive backoff/lockout to defeat credential stuffing and brute force (wire to the resource-consumption limits below).
+- **Make MFA possible** — provide a second-factor hook (TOTP/WebAuthn) for privileged or account-sensitive flows; never design auth that structurally precludes it.
+- **Score password strength, don't dictate composition** — enforce a minimum length and screen against known-breached/common passwords; do not impose arbitrary composition or forced-rotation rules (NIST 800-63B).
+- **Safe account recovery** — reset/verification tokens are CSPRNG-generated, single-use, and short-TTL, delivered out-of-band; reset never reveals whether an account exists; invalidate existing sessions on password change.
+- **No user enumeration** — login, reset, and registration return uniform responses and timing for "no such user" vs "wrong credential".
+
+---
+
+## Session & self-contained-token lifecycle  (ASVS V7 / V9 / OPC C6)
+
+- **Session IDs from a CSPRNG with sufficient entropy**, carried in `HttpOnly`+`Secure`+`SameSite` cookies (see headers section). **Regenerate the session id on login and on any privilege/role change** (anti-fixation).
+- **Expire and revoke** — enforce both idle and absolute timeouts; invalidate the session server-side on logout, password change, and privilege change. A logout that only clears the client is not a logout.
+- **JWT / self-contained tokens** — verify the signature against an **explicit algorithm allowlist (reject `alg=none`; never honor a caller-chosen alg)**; validate `exp`/`nbf`/`iss`/`aud`; keep access-token TTL short and pair it with a revocable refresh token. No secrets or PII in claims (a JWT is base64, not encrypted).
+- Never place session ids or tokens in URLs/query strings — they leak via logs and the `Referer` header.
+
+---
+
+## Resource-consumption & anti-automation limits  (API4:2023 / API6:2023)
+
+- **Bound every request** — cap request body size, JSON depth/array length, file-upload size/count, and page size (enforce a max `limit`; reject unbounded list queries). Set server-side timeouts on inbound requests and on every outbound/DB call.
+- **Bound expensive operations** — depth/complexity/cost limits on GraphQL and any nested/recursive query; pagination is mandatory on list endpoints; apply per-tenant quotas/cost ceilings where a request can fan out or spend money.
+- **Anti-automation on sensitive business flows** — signup, login, password reset, checkout/purchase, invite, and comment flows get anti-automation (rate/velocity limits; CAPTCHA or proof-of-work where abuse is likely) beyond plain per-IP throttling.
+- Rate-limit responses are `429` with `Retry-After`; the limiter **fails closed** (deny when its backend is unavailable, never bypass).
+
+---
+
+## Property-level authorization (mass assignment / BOPLA)  (API3:2023 / ASVS V4 / OPC C7)
+
+- **Bind only allowlisted fields on writes.** Never spread a raw request object into a model/ORM create or update (`new User(req.body)`, `Object.assign(entity, req.body)`, `Model(**request.json)`). Map an explicit allowlist of client-settable fields; ignore everything else.
+- **Server-controlled fields are never client-settable** — `role`, `is_admin`, `tenant_id`, `owner_id`, `balance`, `verified`, pricing, and status are set server-side from session/trusted state, never from the payload.
+- **Allowlist the response shape too** — serialize via an explicit DTO/view; never return whole DB rows (excessive data exposure). Strip internal/sensitive fields (password hash, tokens, internal flags).
+
+---
+
+## Treat third-party / upstream API responses as untrusted  (API10:2023 / OPC C5)
+
+- Apply the same boundary rules to data you *receive* from third-party/integrated APIs as to user input: validate against a schema, constrain types/sizes, and encode before it reaches any sink (DB, DOM, shell, file path).
+- Set timeouts, size caps, and retry/circuit-breaker limits on outbound calls; never block indefinitely on a slow upstream. Route any redirect through the SSRF allowlist (see SSRF section).
+- Never `eval`/deserialize an untrusted upstream payload into executable objects; verify webhooks (signature + replay/nonce protection) before acting on them.
+
+---
+
+## Security event logging  (A09 / ASVS V16 / OPC C9)
+
+- **Emit a structured security event** (distinct from request logs) for: authentication success/failure, logout, password/MFA change, access-control denials (`403`), privilege/role change, and input-validation rejections at the boundary. Include `user_id`, `tenant_id`, source IP, action, target, result, and `trace_id` — the exact field names from `observability-contract.md`.
+- **Never log secrets or full PII** in these events (the redaction deny-list still applies); log identifiers, not credentials.
+- Make security events queryable via a stable `event`/`category` field so detection and alerting can fire on them — never bury an auth failure inside a generic `info` line.
+
+---
+
 ## BUILD Quality Bar line
 
 Every BUILD phase MUST end by asserting, in its completion receipt/summary:
 
-> **`security-defaults checklist passes`** — input validated at the boundary (fail-closed, allowlist); queries parameterized; output context-encoded (no unsanitized HTML); SSRF allowlist on user-controlled outbound; secrets from env/secret-manager and never logged; per-object default-deny authz (no BOLA/IDOR); security headers + strict CORS + secure cookies; deps pinned + lockfile committed + SCA clean; LLM output treated as untrusted + tool-calls gated.
+> **`security-defaults checklist passes`** — input validated at the boundary (fail-closed, allowlist); queries parameterized; output context-encoded (no unsanitized HTML); SSRF allowlist on user-controlled outbound; secrets from env/secret-manager and never logged; per-object default-deny authz (no BOLA/IDOR); property-level authz (no mass assignment, DTO-shaped responses); security headers + strict CORS + secure cookies; deps pinned + lockfile committed + SCA clean; LLM output treated as untrusted + tool-calls gated; strong crypto (KDF-hashed credentials, authenticated encryption, CSPRNG tokens, TLS 1.2+); auth throttled + lockout + safe recovery; session/JWT lifecycle (regenerate on privilege change, server-side revoke, alg-allowlist); resource-consumption + anti-automation limits (body/page/depth caps, timeouts); third-party responses treated as untrusted; security events logged (authn/authz/denials).
 
 A BUILD phase that cannot assert this line is **not complete**. Any consciously deferred item is logged explicitly as a HARDEN hand-off with reason — never silently skipped.
 
@@ -107,6 +169,15 @@ A BUILD phase that cannot assert this line is **not complete**. Any consciously 
 | `Allow-Origin: *` with `Allow-Credentials: true` | Explicit origin allowlist; reject wildcard + credentials together |
 | Validating only in the browser | Server-side schema validation at the trust boundary, fail-closed |
 | `exec(\`SELECT \${model_output}\`)` on LLM output | Treat model output as untrusted; bind params; gate tool-calls |
+| `md5(password)` / storing the password in plaintext | Argon2id/scrypt/bcrypt + per-user salt; never raw/fast hashes for credentials |
+| `Math.random()` for a reset token / session id | CSPRNG — `crypto.randomBytes` / `secrets.token_urlsafe` / `crypto/rand` |
+| `jwt.verify(token)` accepting any alg (or `alg:none`) | Verify against an explicit alg allowlist; validate `exp`/`iss`/`aud` |
+| `new User(req.body)` / `Object.assign(entity, req.body)` | Bind an allowlist of client-settable fields; set `role`/`tenant_id`/`owner_id` server-side |
+| Returning the raw DB row to the client | Serialize via an explicit DTO; strip password hash, tokens, internal flags |
+| `findAll()` with no pagination / no body-size cap | Mandatory max page size + body/depth/upload caps + request & outbound timeouts |
+| Logout that only clears the client cookie | Invalidate the session server-side; regenerate the id on privilege change |
+| Trusting a webhook / third-party JSON as-is | Validate the schema, verify the signature, cap size + timeout before acting |
+| Auth failure swallowed in a generic `info` log | Emit a structured security event (authn/authz/denial) with `user_id`/`trace_id` |
 
 ---
 
