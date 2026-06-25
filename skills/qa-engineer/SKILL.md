@@ -164,96 +164,18 @@ At startup, check whether `frontend/` (or `paths.frontend` from config) exists. 
 
 This skill produces output in two locations: test deliverables (code, configs, fixtures) at `tests/` in the project root, and workspace artifacts (test plan, reports, findings) in `Shipyard/qa-engineer/`. Never write test files into `services/` or `frontend/` directly.
 
-### Project Root Output (`tests/`)
+**Project root (`tests/`)** — top-level dirs and their purpose:
+- `unit/<service>/` — handlers, services, repositories, validators, mappers, plus `property/` (property-based/fuzz tests for validators, parsers, serializers, money, authz).
+- `integration/` — `docker-compose.test.yml` (pinned dependency containers), `setup.ts` (global setup/teardown), and per-service `db/`, `cache/`, `messaging/`, `api/` real-dependency tests.
+- `contract/` — `pacts/consumer/` + `pacts/provider/`, `schema/` OpenAPI + `problem.contract.test.ts` (RFC 9457 Problem `$ref`), `pact-broker.config.ts` (connection + can-i-deploy).
+- `e2e/` — `api/` (flows, `smoke.e2e.ts`, setup) and `ui/` (Page Object Models in `pages/`, `flows/`, `visual/`, `playwright.config.ts`/`cypress.config.ts`).
+- `performance/` — `load-tests/`, `stress-tests/`, `spike-tests/` (k6 scripts), `baselines/<scenario>.baseline.json`, `compare-baseline.js` (devops invokes `node tests/performance/compare-baseline.js`), `thresholds.js` (DERIVED from `docs/architecture/performance-budget.yaml`).
+- `fixtures/` — `factories/` (fishery/factory-girl), `seed-data/` (`*.seed.json` + `seed-runner.ts`), `mocks/` (MSW/nock mock servers + service stubs).
+- `flags/<flag>.matrix.test.ts` — on/off + provider-down safe-default matrix, parameterized over `config/feature-flags.yaml`.
+- `mutation/stryker.config.json` (or mutmut/PIT/go-mutesting) — scoped to critical modules, gating min score.
+- `coverage/thresholds.json` — single source for coverage numbers, WIRED into the runner so `make test` exits non-zero on breach; includes patch threshold.
 
-```
-tests/
-├── unit/
-│   └── <service>/                      # One folder per backend service
-│       ├── handlers/
-│       │   └── <handler>.test.ts       # HTTP handler / controller tests
-│       ├── services/
-│       │   └── <service>.test.ts       # Business logic / domain service tests
-│       ├── repositories/
-│       │   └── <repo>.test.ts          # Data access layer tests (mocked DB)
-│       ├── validators/
-│       │   └── <validator>.test.ts     # Input validation tests
-│       ├── mappers/
-│       │   └── <mapper>.test.ts        # DTO / domain mapper tests
-│       └── property/
-│           └── <module>.property.test.ts # Property-based/fuzz tests (validators, parsers, serializers, money, authz)
-├── integration/
-│   ├── docker-compose.test.yml         # Test dependency containers (Postgres, Redis, Kafka, etc.)
-│   ├── setup.ts                        # Global integration test setup / teardown
-│   └── <service>/
-│       ├── db/
-│       │   └── <repo>.integration.ts   # Real DB queries via testcontainers
-│       ├── cache/
-│       │   └── <cache>.integration.ts  # Real Redis / cache operations
-│       ├── messaging/
-│       │   └── <queue>.integration.ts  # Real message broker publish / consume
-│       └── api/
-│           └── <endpoint>.integration.ts  # HTTP-level integration (supertest / httptest)
-├── contract/
-│   ├── pacts/
-│   │   ├── consumer/
-│   │   │   └── <consumer>-<provider>.pact.ts  # Consumer-driven contract tests
-│   │   └── provider/
-│   │       └── <provider>.verify.ts           # Provider verification tests
-│   ├── schema/
-│   │   ├── <api>.schema.test.ts               # OpenAPI schema validation tests
-│   │   └── problem.contract.test.ts           # RFC 9457 Problem error-body contract (against the reusable Problem $ref)
-│   └── pact-broker.config.ts                  # Pact Broker connection + can-i-deploy config
-├── e2e/
-│   ├── api/
-│   │   ├── flows/
-│   │   │   └── <user-flow>.e2e.ts     # Multi-step API workflow tests
-│   │   ├── smoke.e2e.ts               # Critical-path smoke tests
-│   │   └── setup.ts                   # API E2E auth helpers, base URLs
-│   └── ui/
-│       ├── pages/                     # Page Object Models
-│       │   └── <page>.page.ts
-│       ├── flows/
-│       │   └── <user-flow>.spec.ts    # Playwright / Cypress user flow specs
-│       ├── visual/
-│       │   └── <component>.visual.ts  # Visual regression snapshot tests
-│       └── playwright.config.ts       # Or cypress.config.ts
-├── performance/
-│   ├── load-tests/
-│   │   └── <scenario>.k6.js           # k6 load test scripts (sustained load)
-│   ├── stress-tests/
-│   │   └── <scenario>.k6.js           # k6 stress test scripts (breaking point)
-│   ├── spike-tests/
-│   │   └── <scenario>.k6.js           # k6 spike test scripts (sudden burst)
-│   ├── baselines/
-│   │   └── <scenario>.baseline.json   # Expected p50/p95/p99 latency, throughput
-│   ├── compare-baseline.js            # Runner devops invokes via `node tests/performance/compare-baseline.js` — reads baselines/<scenario>.baseline.json + budget, exits non-zero on regression
-│   └── thresholds.js                  # k6 thresholds DERIVED FROM docs/architecture/performance-budget.yaml (never hardcoded)
-├── fixtures/
-│   ├── factories/
-│   │   └── <entity>.factory.ts        # Test data factories (fishery / factory-girl pattern)
-│   ├── seed-data/
-│   │   ├── <entity>.seed.json         # Static seed data for integration / E2E
-│   │   └── seed-runner.ts             # Script to load seed data into test DBs
-│   └── mocks/
-│       ├── <external-api>.mock.ts     # External API mock servers (MSW / nock)
-│       └── <service>.stub.ts          # Internal service stubs
-├── flags/
-│   └── <flag>.matrix.test.ts          # On/off + provider-down safe-default matrix, parameterized over config/feature-flags.yaml
-├── mutation/
-│   └── stryker.config.json            # (or mutmut/PIT/go-mutesting config) — scoped to critical modules, gating min score
-└── coverage/
-    └── thresholds.json                # Single source for coverage numbers — WIRED into the runner (vitest/jest threshold, pytest --cov-fail-under, JaCoCo rule, go-cover gate) so `make test` exits non-zero on breach; includes patch threshold
-```
-
-### Workspace Output (`Shipyard/qa-engineer/`)
-
-```
-Shipyard/qa-engineer/
-├── test-plan.md                        # Master test plan with traceability matrix
-├── coverage-report.md                  # Coverage analysis and findings
-└── findings.md                         # QA findings and recommendations
-```
+**Workspace (`Shipyard/qa-engineer/`)** — `test-plan.md` (master plan + traceability matrix), `coverage-report.md`, `findings.md` (QA findings and remediation).
 
 ---
 
@@ -263,249 +185,33 @@ Execute each phase sequentially. Do NOT skip phases. Each phase builds on the ou
 
 ### Parallel Execution Strategy
 
-After Phase 1 (Test Planning), Phases 2-6 run in parallel — each test type is independent:
+After Phase 1 (Test Planning), Phases 2-6 run in parallel — each test type is independent. After the test plan is written, spawn all test types simultaneously with **bounded foreground fan-out** — up to **3 concurrent** `general-purpose` sub-tasks (Agent tool), batching in groups of 3 if there are more than 3. Do NOT pass isolation/background/mode at call time (not documented Agent-tool parameters; this subagent is already isolated). Sub-task prompts:
 
-After the test plan is written, spawn all test types simultaneously. Parallelize with **bounded foreground fan-out** — spawn up to **3 concurrent** `general-purpose` sub-tasks (Agent tool), batching in groups of 3 if there are more than 3. Do NOT pass isolation/background/mode at call time (not documented Agent-tool parameters; this subagent is already isolated). Sub-task prompts:
+> - Write unit tests following Phase 2 (`phases/02-unit-tests.md`) rules. Read `Shipyard/qa-engineer/test-plan.md` for traceability. Write to `tests/unit/`.
+> - Write integration tests following Phase 3 (`phases/03-integration-tests.md`) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/integration/`.
+> - Write contract tests following Phase 4 (`phases/04-contract-tests.md`) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/contract/`.
+> - Write E2E tests following Phase 5 (`phases/05-e2e-tests.md`) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/e2e/`.
+> - Write performance tests following Phase 6 (`phases/06-performance-tests.md`) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/performance/`.
 
-> - Write unit tests following Phase 2 (see this skill's phases/) rules. Read `Shipyard/qa-engineer/test-plan.md` for traceability. Write to `tests/unit/`.
-> - Write integration tests following Phase 3 (see this skill's phases/) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/integration/`.
-> - Write contract tests following Phase 4 (see this skill's phases/) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/contract/`.
-> - Write E2E tests following Phase 5 (see this skill's phases/) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/e2e/`.
-> - Write performance tests following Phase 6 (see this skill's phases/) rules. Read `Shipyard/qa-engineer/test-plan.md`. Write to `tests/performance/`.
+Since there are 5 sub-tasks and the cap is 3 concurrent, run them in batches of 3 (e.g., unit + integration + contract, then E2E + performance). Wait for all 5 agents to complete, then run Phase 7 (Test Infrastructure) sequentially — it needs all test files to configure CI. **Why this works:** each test type reads source code independently and writes to its own directory. No conflicts. The test plan from Phase 1 provides shared context.
 
-Since there are 5 sub-tasks and the cap is 3 concurrent, run them in batches of 3 (e.g., unit + integration + contract, then E2E + performance).
+**Execution order:** 1. Phase 1 (sequential, foundational) → 2. Phases 2-6 (PARALLEL) → 3. Phase 7 (sequential, needs all test files).
 
-Wait for all 5 agents to complete, then run Phase 7 (Test Infrastructure) sequentially — it needs all test files to configure CI.
+## Phase Index
 
-**Why this works:** Each test type reads source code independently and writes to its own directory. No conflicts. The test plan from Phase 1 provides shared context.
+| Phase | File | When to Load | Purpose |
+|-------|------|-------------|---------|
+| 1 | phases/01-test-planning.md | Always first (sequential) | Traceability matrix: BRD acceptance criteria → test cases by type; coverage targets; critical modules; perf budget; flag keys |
+| 2 | phases/02-unit-tests.md | After Phase 1 (parallel) | Isolated unit tests for handlers, services, repositories, validators with full mocking; factories |
+| 3 | phases/03-integration-tests.md | After Phase 1 (parallel) | Real-dependency tests via testcontainers/docker-compose; DB, cache, broker, HTTP |
+| 4 | phases/04-contract-tests.md | After Phase 1 (parallel) | Pact consumer/provider + OpenAPI schema validation; RFC 9457 Problem; can-i-deploy gate |
+| 5 | phases/05-e2e-tests.md | After Phase 1 (parallel) | Critical user flows end-to-end; cross-boundary journeys; smoke suite; UI Page Objects |
+| 6 | phases/06-performance-tests.md | After Phase 1 (parallel) | k6 load/stress/spike scripts; thresholds from perf budget; baselines + compare-baseline.js |
+| 7 | phases/07-test-infrastructure.md | After Phases 2-6 (sequential) | CI workflows, coverage/patch gates wired into runner + Makefile, mutation nightly, flaky/retry policy |
 
-**Execution order:**
-1. Phase 1: Test Planning (sequential — foundational)
-2. Phases 2-6: Unit + Integration + Contract + E2E + Performance (PARALLEL)
-3. Phase 7: Test Infrastructure (sequential — needs all test files)
+## Dispatch Protocol
 
----
-
-### Phase 1 — Test Planning
-
-**Goal:** Produce a traceability matrix linking every BRD acceptance criterion to concrete test cases, categorized by test type.
-
-**Inputs to read:**
-- BRD / PRD acceptance criteria (every GIVEN/WHEN/THEN or equivalent)
-- `api/` API contracts (OpenAPI specs, AsyncAPI specs)
-- `schemas/` data models and `docs/architecture/` sequence diagrams
-- `services/` service structure (list all services, handlers, repos)
-- `frontend/` component and page structure (if frontend exists; otherwise skip frontend inputs)
-
-**Actions:**
-1. Extract every acceptance criterion and assign a unique ID (AC-001, AC-002, ...).
-2. For each criterion, determine which test types are required (unit, integration, contract, e2e, performance).
-3. Identify all services, modules, and components that need test coverage.
-4. Identify all external dependencies that require mocking or test containers.
-5. Identify critical user flows for E2E coverage.
-6. Identify performance-sensitive endpoints for load testing; read `docs/architecture/performance-budget.yaml` so k6 thresholds derive from it (never hardcode 500ms).
-7. Define coverage thresholds per service (lines, branches, functions) AND the patch-coverage threshold (~80%) — these become the FAILING gate in Phase 7, not a passive JSON file.
-8. Identify **critical modules** (money/billing, authz predicates, validators, parsers, serializers, domain invariants) that require mutation testing + property/fuzz tests (Test Quality Gates).
-9. If `config/feature-flags.yaml` exists, list every flag key for the feature-flag test matrix (on/off + provider-down safe default).
-
-**Output:** Write `Shipyard/qa-engineer/test-plan.md` with the following sections:
-- **Scope** — What is being tested, what is explicitly out of scope
-- **Test Strategy** — Test pyramid approach, which test types cover which risk areas
-- **Traceability Matrix** — Table mapping AC-ID to test case IDs, test type, and priority
-- **Environment Requirements** — Containers, external services, env vars needed
-- **Coverage Targets** — Per-service and global coverage gates
-- **Risk Register** — Areas with high complexity or insufficient testability
-
----
-
-### Phase 2 — Unit Tests
-
-**Goal:** Test each service's business logic, handlers, and repositories in isolation with full mocking of external dependencies.
-
-**Inputs to read:**
-- `services/` source code for each service
-- The test plan from Phase 1
-
-**Rules:**
-1. One test file per source file. Mirror the source directory structure under `tests/unit/<service>/`.
-2. Mock ALL external dependencies: databases, caches, message brokers, HTTP clients, other services.
-3. Use dependency injection or module mocking — never patch globals.
-4. Test the happy path, error paths, edge cases, and boundary values for every public function.
-5. For handlers/controllers: test request parsing, validation error responses, correct status codes, response body shape.
-6. For services/domain logic: test business rule enforcement, state transitions, calculation correctness.
-7. For repositories: test query construction, parameter binding, result mapping (with mocked DB driver).
-8. For validators: test every validation rule, including null, empty, boundary, and malformed inputs.
-9. Every test must have a descriptive name that reads as a specification: `it("should return 404 when order does not exist for the given user")`.
-10. Use factories from `tests/fixtures/factories/` for test data — never inline large object literals.
-11. Assert on specific values, not just truthiness. Prefer `toEqual` over `toBeTruthy`.
-12. Test error types and messages, not just that an error was thrown.
-
-**Output:** Write test files to `tests/unit/<service>/`.
-
-Also write factories to `tests/fixtures/factories/` as you discover entity shapes.
-
----
-
-### Phase 3 — Integration Tests
-
-**Goal:** Test service interactions with real dependencies using testcontainers or docker-compose.
-
-**Inputs to read:**
-- `services/` database migrations, schemas, connection configs
-- `docs/architecture/` infrastructure requirements (which DBs, caches, brokers)
-- The test plan from Phase 1
-
-**Rules:**
-1. Write `tests/integration/docker-compose.test.yml` with containers for every real dependency (PostgreSQL, Redis, Kafka, Elasticsearch, etc.). Pin exact image versions.
-2. Write `tests/integration/setup.ts` with global before/after hooks: start containers, run migrations, seed base data, tear down after suite.
-3. Each integration test file connects to real containers — no mocks for the dependency under test.
-4. Test actual SQL queries against a real database with realistic data volumes (not just 1 row).
-5. Test cache read/write/eviction with a real Redis instance.
-6. Test message publishing and consumption with a real broker.
-7. Test API endpoints with real HTTP calls (supertest / httptest) against a running server.
-8. Each test must clean up its own data. Use transactions with rollback, or truncate tables in afterEach.
-9. Tests must be parallelizable — use unique identifiers to avoid cross-test data collisions.
-10. Test failure modes: connection timeouts, constraint violations, concurrent writes, deadlocks.
-
-**Output:** Write test files to `tests/integration/<service>/`.
-
-Write `docker-compose.test.yml` and `setup.ts` to `tests/integration/`.
-
----
-
-### Phase 4 — Contract Tests
-
-**Goal:** Verify API consumers and providers agree on request/response schemas and that implementations conform to OpenAPI specifications.
-
-**Inputs to read:**
-- `api/` OpenAPI specs and AsyncAPI specs
-- `services/` API route definitions, request/response DTOs
-- `frontend/` API client calls and expected response shapes (if frontend exists; otherwise skip consumer-side frontend contracts)
-
-**Rules:**
-1. For each API consumer (frontend, other services), write a Pact consumer test that defines the expected interactions.
-2. For each API provider, write a Pact provider verification test that replays consumer expectations against the real provider.
-3. Write schema validation tests that load the OpenAPI spec and validate every endpoint's actual response against the schema.
-4. Test backward compatibility: if there are versioned APIs, verify old consumers still work with new providers.
-5. For async APIs (events, messages), write contract tests for message schemas using AsyncAPI specs.
-6. Configure Pact Broker connection in `pact-broker.config.ts` (even if the broker URL is a placeholder). Wire the **`pact-broker can-i-deploy` deployment gate** into the contract CI stage — see "Contract Deployment Gate" — and surface it as `contract_can_i_deploy` in the receipt.
-7. Contract tests must fail if a required field is removed, a type changes, or a new required field is added without consumer agreement.
-8. **Error-response contract (RFC 9457):** every 4xx/5xx interaction asserts the body is `application/problem+json` matching the reusable `Problem` schema (owned by solution-architect) — `{ type, title, status, detail, instance }` plus extensions `trace_id` and `errors[]`. Validate against the OpenAPI `Problem` `$ref`, and assert the `type`/error code comes from the error-catalog module (the single source for runtime + docs) — not an ad-hoc string. A bare `{ code, message }` envelope is a contract failure.
-
-**Output:** Write contract tests to `tests/contract/`.
-
----
-
-### Phase 5 — E2E Tests
-
-**Goal:** Test critical user flows end-to-end through the full stack.
-
-**Inputs to read:**
-- BRD / PRD user stories and acceptance criteria (especially the critical path)
-- `frontend/` pages and navigation flow (if frontend exists; otherwise API-only E2E)
-- `services/` API endpoints
-- The test plan from Phase 1 (critical user flows identified)
-
-**Rules:**
-1. Identify the 5-10 most critical user flows (signup, login, core CRUD, payment, etc.).
-2. For API E2E: chain multiple API calls that represent a complete user journey. Use real auth tokens. Validate side effects (DB state, emails sent, events published).
-3. For UI E2E (skip if frontend not found): use Page Object Model pattern. Each page gets a class in `tests/e2e/ui/pages/`.
-4. UI tests must use resilient selectors: `data-testid` attributes, ARIA roles — never CSS classes or DOM structure.
-5. Write a smoke test suite (`smoke.e2e.ts`) that covers the absolute minimum "is the app alive" checks. This runs on every deploy.
-6. E2E tests must be idempotent — running them twice produces the same result.
-7. Include setup/teardown that creates test users, seeds required data, and cleans up after.
-8. Add explicit waits for async operations — never use arbitrary `sleep()` calls.
-9. For visual regression (skip if frontend not found): capture screenshots of key pages and compare against baselines.
-10. Configure test timeouts generously (30s+ per test) — E2E is slow by nature.
-11. **Cross-boundary journey testing** (boundary-safety protocol pattern 5): For every multi-system flow (auth, payment, email, webhook), write at least one E2E test that traces the COMPLETE journey from user action to final state. Auth test must verify: unauthenticated user visits protected page → redirected to login → authenticates → redirected back to original page → sees authenticated content. Payment test must verify: user clicks pay → payment provider processes → callback fires → order status updates → user sees confirmation. Do NOT just test individual hops — test the full chain.
-12. **Framework navigation correctness**: Verify that no `<Link>` or client-side `navigate()` targets API routes, external URLs, or auth endpoints. These must use raw `<a href>` or `window.location` for full HTTP requests.
-
-**Output:** Write E2E tests and page objects to `tests/e2e/`. Write Playwright or Cypress config.
-
----
-
-### Phase 6 — Performance Tests
-
-**Goal:** Establish performance baselines and create load/stress test scripts for performance-sensitive endpoints.
-
-**Inputs to read:**
-- `docs/architecture/` NFRs (latency targets, throughput requirements, SLOs)
-- `services/` API endpoints (especially high-traffic ones)
-- The test plan from Phase 1 (performance-sensitive areas)
-
-**Rules:**
-1. Write k6 scripts (JavaScript). Each script targets a specific scenario (e.g., "user browsing products", "checkout flow under load").
-2. Load tests: simulate sustained normal traffic. Define realistic ramp-up patterns (e.g., 0 -> 100 VUs over 2 min, hold 10 min, ramp down).
-3. Stress tests: find the breaking point. Ramp VUs aggressively until error rate exceeds 5% or p99 exceeds SLO.
-4. Spike tests: simulate sudden traffic bursts (0 -> 500 VUs in 10 seconds).
-5. **Define thresholds by READING `docs/architecture/performance-budget.yaml` — never hardcode `< 500`.** Encode them in `tests/performance/thresholds.js` derived from the budget (see "Performance & Feature-Flag Tests"). Tag metrics by the templated `route` so they join to the `http_request_duration_seconds` / `http_requests_total` instruments in `observability-contract.md`.
-6. Write baseline JSON files (`tests/performance/baselines/<scenario>.baseline.json`) that record expected performance under normal load. **Also EMIT the comparison runner `tests/performance/compare-baseline.js`** — the exact script devops invokes as `node tests/performance/compare-baseline.js`. It reads every `tests/performance/baselines/<scenario>.baseline.json` and the budget, compares the latest k6 run, and **exits non-zero on regression** → sets `perf_baseline_regression: true` in the receipt. devops calls this script verbatim; do not rename it or split it into a per-scenario `baseline.json`.
-7. Use realistic test data — not the same request repeated. Parameterize with CSV data files or k6 SharedArray. Use only synthetic, PII-free data (Test-Data Lifecycle rules).
-8. Include authentication in test scripts (token generation, session management).
-9. Test both read-heavy and write-heavy endpoints separately.
-10. Add custom metrics for business-critical operations — but for HTTP RED metrics use the contract names (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight`); never invent a metric name no service emits.
-
-**Output:** Write k6 scripts to `tests/performance/`. Write baseline files to `tests/performance/baselines/<scenario>.baseline.json` and the comparison runner to `tests/performance/compare-baseline.js`.
-
----
-
-### Phase 7 — Test Infrastructure
-
-**Goal:** Configure CI test execution, coverage enforcement, and test reliability tooling.
-
-**Inputs to read:**
-- All test files generated in Phases 2-6
-- Coverage thresholds from the test plan
-- Project CI/CD system (GitHub Actions, GitLab CI, etc.)
-
-**Actions:**
-1. **Coverage is a FAILING gate, not a passive JSON file.** Write `tests/coverage/thresholds.json` as the single source of the numbers:
-   ```json
-   {
-     "global": { "lines": 80, "branches": 75, "functions": 80, "statements": 80 },
-     "services": {
-       "<service-name>": { "lines": 85, "branches": 80, "functions": 85, "statements": 85 }
-     },
-     "patch": { "lines": 80 }
-   }
-   ```
-   Then **WIRE it into the runner so `make test` exits non-zero on breach** — a JSON file nothing reads does NOT count. Per language, derive the runner config from these numbers (do not hardcode a second copy of the thresholds — generate from `thresholds.json` or keep the runner config the single source and have CI assert they match):
-   - **Vitest/Jest:** `coverage.thresholds` (global + per-glob `100`-style entries) in `vitest.config.ts` / `jest.config.js` — runner exits non-zero below threshold. `make test` runs `vitest run --coverage` / `jest --coverage --coverageThreshold` with **no `|| true`**.
-   - **pytest:** `--cov-fail-under=<lines>` (and `fail_under` in `[tool.coverage.report]` of `pyproject.toml`); branch coverage via `--cov-branch`.
-   - **JaCoCo (JVM):** a `jacocoCoverageVerification` rule (`LINE`/`BRANCH` `minimum`) bound to `check` — Gradle/Maven fails the build below the limit.
-   - **Go:** a `go test ./... -coverprofile` step plus a gate script that parses `go tool cover -func` total and `exit 1` below the threshold.
-   - The `make test` target MUST propagate the runner's non-zero exit (no `|| true`, no `continue-on-error`). CI invokes `make test` as a required step.
-   - **EMIT the `coverage-check` and `patch-coverage` Makefile targets** (CANON #8 — qa owns them). Append them to the **root `Makefile`** (software-engineer generates the base Makefile in phase 05; do NOT create a second Makefile). The devops CI gates invoke `make coverage-check` and `make patch-coverage` verbatim, so both targets MUST exist and MUST exit non-zero on breach — **no `|| true`, no `continue-on-error`**:
-     ```makefile
-     # appended by qa-engineer — coverage gates wired to tests/coverage/thresholds.json
-     coverage-check:
-     	# runs the coverage runner (vitest/jest threshold | pytest --cov-fail-under | JaCoCo rule | go-cover gate)
-     	# against tests/coverage/thresholds.json; exits non-zero below the matching gate
-     	$(COVERAGE_CMD)
-
-     patch-coverage:
-     	# diff-scoped gate (diff-cover / Codecov patch / vitest --changed) at thresholds.json:patch.lines (~80%)
-     	# exits non-zero when new/changed lines fall below the patch threshold
-     	$(PATCH_COVERAGE_CMD)
-     ```
-   - **Patch-coverage required PR check:** the `make patch-coverage` target (above) wraps the diff-scoped coverage gate (`diff-cover` / Codecov/Coveralls patch status / `vitest --changed`); wire it as a **required GitHub status check at ~80%** (`thresholds.json:patch.lines`) — it fails the PR when new/changed lines fall below the patch threshold. NO `|| true`, NO `continue-on-error: true`.
-2. Write `.github/workflows/test.yml` (GitHub Actions templates first, per the chosen default) with:
-   - **Unit test stage** — runs first, fast, no containers. `make test` — fails (non-zero) on coverage threshold breach (item above). NO `|| true`.
-   - **Patch-coverage check** — required PR status at ~80% on changed lines (item above).
-   - **Integration test stage** — starts docker-compose dependencies (pinned image **digests**, item 4 below), runs integration suite, tears down.
-   - **Contract test stage** — runs Pact tests, publishes pacts to the broker, AND runs the **`pact-broker can-i-deploy` deployment gate** (item 4 below) — its non-zero exit blocks deploy.
-   - **E2E test stage** — deploys to test environment, runs smoke + full E2E suite.
-   - **Performance test stage** — runs k6 against staging; the script's own thresholds (read from `performance-budget.yaml`, Phase 6) fail the stage on baseline regression. NO `|| true`.
-   - **Mutation test stage (NIGHTLY, gating)** — `mutation-nightly.yml` on a `schedule:` cron; runs Stryker/mutmut/PIT/go-mutesting on critical modules and **fails below the configured minimum score** (Test Quality Gates section). Nightly (not per-PR) because mutation runs are slow; the failing run is still a gate, not advisory.
-   - **Randomized test order** — run the unit/integration suites with randomized order (`--shuffle` / `-p randomly` / `-shuffle=on`) so order-dependence fails CI, not prod.
-   - Parallel execution: split unit and integration tests across multiple CI runners by service.
-   - Test result artifacts: JUnit XML reports, coverage + patch-coverage reports, mutation reports, k6 JSON results — the receipt's machine-readable fields are parsed from these.
-   - Flaky test detection: track test pass/fail history, quarantine tests with >5% flake rate. A quarantined test is a remediation finding, not a silent skip.
-   - Retry policy: retry failed E2E tests up to 2 times before marking as failed. **Unit/integration tests are NOT retried** — a non-deterministic unit test is a determinism finding (Test Determinism section), not something to paper over with retries.
-3. Write seed data runner to `tests/fixtures/seed-data/seed-runner.ts`.
-4. Write external API mock configurations to `tests/fixtures/mocks/`.
-
-**Output:** Write CI config to `.github/workflows/test.yml` and `.github/workflows/mutation-nightly.yml`, append the `coverage-check` and `patch-coverage` targets to the root `Makefile`, and write coverage thresholds and test infrastructure to `tests/`.
+Read the relevant phase file before starting that phase. Never read all phases at once — each is loaded on demand to minimize token usage.
 
 ---
 

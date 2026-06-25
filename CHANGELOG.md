@@ -4,7 +4,22 @@ All notable changes to **Shipyard**.
 
 ## [Unreleased]
 
+### Changed
+- **Progressive-disclosure refactor** — the four oversized `SKILL.md` files were
+  slimmed below the 500-line budget by deferring per-phase detail to on-demand
+  `phases/` and `reference/` files (loaders + frontmatter stay in `SKILL.md`):
+  `shipyard` 1212→451 (5 new `phases/`+`reference/` files), `solution-architect`
+  826→240 (6 phases), `qa-engineer` 670→376 (7 phases), `devops` 667→273 (6
+  phases). Each slimmed `SKILL.md` gains a Phase/Reference Index and Dispatch
+  Protocol, mirroring `software-engineer`. Lossless: no instruction was dropped,
+  only relocated. Verified by the eval suite (loaders/frontmatter intact) and a
+  live routing smoke test (orchestrator still loads with zero plugin errors and
+  classifies correctly).
+
 ### Testing
+- **SKILL.md size budget** — new deterministic test `test_skill_size.py` fails
+  any `skills/*/SKILL.md` over 500 lines, locking in the progressive-disclosure
+  win (`phases/`/`reference/` detail files are exempt).
 - **Eval harness added** — a two-tier evaluation suite under `evals/`.
   - **Deterministic tier (free, gates every PR)** — pure-Python structural
     invariants over the repo, run by `evals/run_deterministic.py` and wired into
