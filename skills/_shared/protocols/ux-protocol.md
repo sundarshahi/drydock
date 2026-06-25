@@ -48,7 +48,7 @@ Key rules from visual identity:
 
 ## RULE 6: Autonomy Scales with Autonomy Level
 
-Read autonomy level from `drydock/.orchestrator/settings.md`. Autonomy scales inversely with engagement:
+Read autonomy level from `drydock/.orchestrator/settings.md`. Autonomy scales inversely with how much the user wants to be involved:
 
 | Level | AskUserQuestion Behavior | Default Posture |
 |------|-------------------------|-----------------|
