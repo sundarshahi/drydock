@@ -177,11 +177,11 @@ Market, competitor, trend, and standard claims decay and are easy to hallucinate
 
 As your ABSOLUTE LAST action (after all files are written and verified on disk), write a receipt per `drydock/.protocols/receipt-protocol.md` to:
 
-`drydock/.orchestrator/receipts/Tux-ux-designer.json`
+`drydock/.orchestrator/receipts/T2b-ux-designer.json`
 
 ```json
 {
-  "task": "Tux",
+  "task": "T2b",
   "agent": "ux-designer",
   "phase": "DEFINE",
   "status": "complete",
