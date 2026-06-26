@@ -88,7 +88,7 @@ Domain (loaded by the agents that need them):
 ```
 
 **Rules:**
-- Every new skill loads the core protocol stack via `!`cat` commands in its SKILL.md header. Domain protocols load only into the agents whose work they govern.
+- Every new skill loads the core protocol stack via single-command loader lines — `!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" <name>`` — in its SKILL.md header. Domain protocols load only into the agents whose work they govern.
 - New protocols are added only when a pattern is (a) universal (or clearly domain-defining), and (b) derived from real failure, not theory. We currently have 14. Adding more should be rare — each protocol adds cognitive load and context cost.
 - Protocol files live in `skills/_shared/protocols/`. They are never skill-specific one-offs.
 
@@ -205,7 +205,7 @@ Version lives in 4 places. All must match:
 ### Adding a New Skill
 
 1. Create `skills/{skill-name}/SKILL.md` with YAML frontmatter (`name`, `description`)
-2. Add the core protocol `!`cat` loading lines in the header (plus any domain protocols the skill needs)
+2. Add the core protocol loader lines — `!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" <name>`` — in the header (plus any domain protocols the skill needs)
 3. Add an Autonomy Level section reading from `settings.md`
 4. Add Progress Output section following visual identity
 5. Add Input Classification table (Critical/Degraded/Optional)
@@ -222,7 +222,7 @@ Protocols are expensive — they add to every loading agent's context. Gate care
 2. **Applies broadly.** If it only affects 2-3 skills, put it in those skills, not a shared protocol.
 3. **Cannot be expressed as a Common Mistakes entry.** If a 2-line table row captures it, don't write a protocol.
 4. Add the file to `skills/_shared/protocols/`
-5. Add `!`cat` loading line to every skill that needs it (all 19 for a core protocol; the relevant subset for a domain protocol)
+5. Add a `!`bash "${CLAUDE_SKILL_DIR}/../_shared/load-protocol.sh" <name>`` loader line to every skill that needs it (all 19 for a core protocol; the relevant subset for a domain protocol)
 6. Add to the orchestrator's protocol table
 7. Document in CHANGELOG
 

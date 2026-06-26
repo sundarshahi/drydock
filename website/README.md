@@ -28,7 +28,7 @@ The site is configured for `https://drydock.sundarshahithakuri.com.np` (see `url
    - **Include paths:** `website/*`
    - **Exclude paths:** *(empty)*
 
-   Without this, Cloudflare rebuilds on *every* push to the repo — including root-level doc edits (`README.md`, `VISION.md`, `ROADMAP.md`) that don't touch the site. Build watch paths are evaluated relative to the **repo root** (not the Root directory above), so `website/*` is correct; its `*` matches across folders (`website/docs/...`, `website/src/...`).
+   Without this, Cloudflare rebuilds on *every* push to the repo — including root-level doc edits (`README.md`, `VISION.md`, `CHANGELOG.md`) that don't touch the site. Build watch paths are evaluated relative to the **repo root** (not the Root directory above), so `website/*` is correct; its `*` matches across folders (`website/docs/...`, `website/src/...`).
 
 Every push to `main` that touches `website/` then rebuilds and deploys; pull requests get preview URLs.
 

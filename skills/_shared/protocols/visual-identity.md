@@ -86,7 +86,7 @@ Three tiers of visual weight. Used consistently — never mix tiers for the same
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║  ◆ DRYDOCK v4.3                         ⏱ 12m 47s ║
+║  ◆ DRYDOCK v{local_version}             ⏱ 12m 47s ║
 ║  Project: multi-vendor-marketplace                          ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
@@ -94,6 +94,7 @@ Three tiers of visual weight. Used consistently — never mix tiers for the same
 ║   BUILD     ● active      ⏱ 1m 45s                          ║
 ║   HARDEN    ○ pending                                        ║
 ║   SHIP      ○ pending                                        ║
+║   LAUNCH    ○ pending                                        ║
 ║   SUSTAIN   ○ pending                                        ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝

@@ -6,7 +6,7 @@ description: "Install Drydock from the Claude Code plugin marketplace in two com
 
 # Installation
 
-Drydock is an open-source plugin for [Claude Code](https://docs/intro.claude.com/en/docs/claude-code/overview). It installs from a plugin marketplace in two commands — no local clone required. This page covers the prerequisites, the install commands, what gets registered, how updates work, and how to run an unreleased checkout for local development.
+Drydock is an open-source plugin for [Claude Code](https://docs.claude.com/en/docs/claude-code/overview). It installs from a plugin marketplace in two commands — no local clone required. This page covers the prerequisites, the install commands, what gets registered, how updates work, and how to run an unreleased checkout for local development.
 
 :::info Current version
 This page documents Drydock **2.5.0**. The repository lives at [github.com/sundarshahi/drydock](https://github.com/sundarshahi/drydock).

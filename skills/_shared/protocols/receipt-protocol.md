@@ -58,7 +58,7 @@ Every agent writes a JSON receipt as its LAST action before `TaskUpdate(status="
 |-------|------|------|
 | `task` | string | Task ID from the orchestrator (T1, T2, T3a, etc.) |
 | `agent` | string | Skill name (product-manager, software-engineer, etc.) |
-| `phase` | string | Pipeline phase (DEFINE, BUILD, HARDEN, SHIP, SUSTAIN) |
+| `phase` | string | Pipeline phase (DEFINE, BUILD, HARDEN, SHIP, LAUNCH, SUSTAIN) |
 | `status` | string | Always `"complete"` — only write receipt on success |
 | `artifacts` | string[] | Every file the agent created or modified. Each path MUST exist on disk at time of writing. |
 | `metrics` | object | Key-value pairs with concrete numbers. At least one metric required. No empty objects. This object ALSO carries the machine-readable gate evidence the orchestrator VERIFIES rather than trusts — emit every gate field the task can measure directly inside `metrics`: `tests_passing` (int), `tests_failing` (int), `coverage_lines` (float %), `coverage_branches` (float %), `mutation_score` (float %), `patch_coverage` (float %), `contract_can_i_deploy` (bool), `perf_baseline_regression` (bool — true = regressed past budget). These gate fields are required on any task that runs tests, contracts, or perf checks. |

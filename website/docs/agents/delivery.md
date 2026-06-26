@@ -11,15 +11,15 @@ The final stretch of the [Drydock](https://github.com/sundarshahi/drydock) pipel
 | Agent | Phase | Produces |
 |-------|-------|----------|
 | **DevOps** | SHIP | Containers, CI/CD pipelines, infrastructure-as-code, monitoring infra |
-| **SRE** | SUSTAIN | SLOs, error budgets, runbooks, chaos scenarios, capacity models |
+| **SRE** | SHIP | SLOs, error budgets, runbooks, chaos scenarios, capacity models |
 | **Data Scientist** | SHIP (conditional) | LLM/ML optimization, experiments, data pipelines, cost models |
-| **Technical Writer** | SHIP | API reference, developer guides, the Docusaurus site, governance files |
+| **Technical Writer** | SUSTAIN | API reference, developer guides, the Docusaurus site, governance files |
 | **Skill Maker** | any | Reusable Claude Code skills and plugins |
 
 All five run as isolated subagents (`agents/*.md`), routed through the `drydock` orchestrator. They sit downstream of the planning and build agents — see [how the pipeline fits together](/docs/concepts/how-it-works).
 
 :::info Where these agents sit in the pipeline
-Drydock runs `DEFINE → BUILD → HARDEN → SHIP → LAUNCH → SUSTAIN`, with three human approval gates (requirements, architecture, production-readiness). DevOps, Data Scientist, and Technical Writer execute in **SHIP**; SRE governs **SUSTAIN** and owns the Gate 3 production-readiness check.
+Drydock runs `DEFINE → BUILD → HARDEN → SHIP → LAUNCH → SUSTAIN`, with three human approval gates (requirements, architecture, production-readiness). DevOps, Data Scientist, and SRE execute in **SHIP** — where SRE also runs the Gate 3 production-readiness review at the end of the phase; the Technical Writer documents in **SUSTAIN**.
 :::
 
 ## DevOps — SHIP
@@ -39,7 +39,7 @@ SLOs, error budgets, and burn-rate queries belong to **SRE**. DevOps provides th
 - **solution-architect** owns the RFC 9457 `Problem` schema and the performance budget (`docs/architecture/performance-budget.yaml`); DevOps reads them — it never hardcodes `500ms`/`200KB`.
 - All metric/log/span names come from `observability-contract.md`; dashboards reference only names that code emits.
 
-## SRE — SUSTAIN
+## SRE — SHIP
 
 **What it produces.** The reliability layer for a deployed system: a production-readiness checklist with 12/15-Factor compliance, SLI/SLO definitions with error budgets, multi-window burn-rate alerts, chaos scenarios with steady-state hypotheses, incident runbooks and escalation policies, and capacity models. Deliverables go to `docs/runbooks/<service>/`, the `production-ready` gate, and analysis lands in `drydock/sre/`.
 
@@ -72,7 +72,7 @@ The Data Scientist runs only when the system has AI/ML/LLM usage. Its Phase 1 au
 
 **Boundaries.** A/B experiment guardrails trip the **shared** feature-flag auto-rollback (`libs/shared/feature-flags/`) — the Data Scientist defines thresholds but does not reimplement bucketing, ring rollout, or rollback. It hands infra requirements (Redis, Kafka, warehouse) and alert thresholds to DevOps, data-flow diagrams to solution-architect, and ROI summaries to the product-manager.
 
-## Technical Writer — SHIP
+## Technical Writer — SUSTAIN
 
 **What it produces.** The documentation surface that lets a new developer onboard in hours and an API consumer integrate in minutes: an API reference generated from OpenAPI, developer guides (quickstart, local dev, contributing, testing), operations summaries, a runnable API collection, a Docusaurus site, and governance files (README, CONTRIBUTING, SECURITY, CODEOWNERS, issue/PR templates). Deliverables land under `docs/`; writing notes go to `drydock/technical-writer/`.
 
