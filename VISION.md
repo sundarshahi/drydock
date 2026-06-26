@@ -10,13 +10,13 @@ The agents are not tools waiting for instructions. They are professionals: they 
 
 This is not a pile of scripts. It is a coordinated system that gets sharper with every project it builds.
 
-**One install. Fifteen agents. Production-ready software, from idea to ship.**
+**One install. Nineteen agents. Production-ready software, from idea to ship.**
 
 ---
 
 ## What this is
 
-A fully autonomous pipeline that takes a high-level idea and returns a deployed, tested, secured, documented, and compliant system. Fifteen specialized agents — from Product Manager to SRE to Compliance Officer — coordinated by a single orchestrator that plans, adapts, and ships.
+A fully autonomous pipeline that takes a high-level idea and returns a deployed, tested, secured, documented, and compliant system. Nineteen specialized agents — from Product Manager to SRE to Compliance Officer to go-to-market — coordinated by a single orchestrator that plans, adapts, and ships.
 
 ## What this isn't
 
@@ -37,7 +37,7 @@ These are not suggestions. The bold statement under each is law; the hard rules 
 
 **All agents align on shared artifacts as the single source of truth.**
 
-*Why:* Fifteen agents working from fifteen different understandings of the system produce chaos, not software. Alignment doesn't come from conversation — it comes from canonical artifacts that every agent reads and none contradicts. The BRD is the business truth; the architecture docs are the technical truth; the API contracts are the integration truth. To make a decision, an agent reads the artifact, not its own assumptions.
+*Why:* Nineteen agents working from nineteen different understandings of the system produce chaos, not software. Alignment doesn't come from conversation — it comes from canonical artifacts that every agent reads and none contradicts. The BRD is the business truth; the architecture docs are the technical truth; the API contracts are the integration truth. To make a decision, an agent reads the artifact, not its own assumptions.
 
 **Hard rules:**
 - Every agent reads upstream artifacts before producing its own work. No agent reinvents what a prior agent already decided.
