@@ -1,0 +1,111 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 5rem 1rem 3.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 400px at 50% -10%, color-mix(in srgb, var(--ifm-color-primary) 16%, transparent), transparent 70%);
+}
+
+.heroTitle {
+  font-size: clamp(3rem, 7vw, 5rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(120deg, var(--ifm-color-primary), var(--ifm-color-primary-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.heroSubtitle {
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+.heroLead {
+  max-width: 760px;
+  margin: 0 auto 2rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.install {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0 auto 2rem;
+  text-align: left;
+}
+
+.install code {
+  display: block;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.phaseWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
+  color: var(--ifm-color-primary-darkest);
+  border: 1px solid color-mix(in srgb, var(--ifm-color-primary) 30%, transparent);
+}
+
+[data-theme='dark'] .phase {
+  color: var(--ifm-color-primary-lightest);
+}
+
+.arrow {
+  color: var(--ifm-color-emphasis-500);
+  font-weight: 700;
+}
+
+.gatesNote {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+@media (max-width: 600px) {
+  .install code {
+    white-space: normal;
+    word-break: break-all;
+  }
+}
