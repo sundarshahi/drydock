@@ -391,7 +391,7 @@ AskUserQuestion(questions=[{
   "question": "[Summary of what we figured out]. Ready to move forward?",
   "header": "Handoff",
   "options": [
-    {"label": "Start the full pipeline (Recommended)", "description": "DEFINE->BUILD->HARDEN->SHIP->SUSTAIN"},
+    {"label": "Start the full pipeline (Recommended)", "description": "DEFINE->BUILD->HARDEN->SHIP->LAUNCH->SUSTAIN"},
     {"label": "Start with just requirements (BRD)", "description": "Hand off to Product Manager only"},
     {"label": "Jump to architecture design", "description": "Skip BRD, go straight to Solution Architect"},
     {"label": "Keep exploring — not ready yet", "description": "Continue our conversation"},

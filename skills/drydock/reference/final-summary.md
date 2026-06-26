@@ -25,6 +25,10 @@
 ║             ✓ CI/CD ({provider}, {N} workflows)                  ║
 ║             ✓ SRE ({N} SLOs, {M} alerts, {K} runbooks)          ║
 ║                                                                  ║
+║   LAUNCH    ✓ Positioning & launch plan (growth-marketer)        ║
+║             ✓ Pricing & sales collateral (sales-strategist)      ║
+║             ✓ Onboarding & support (customer-success)            ║
+║                                                                  ║
 ║   SUSTAIN   ✓ Documentation ({N} docs generated)                 ║
 ║             ✓ Custom Skills ({N} project-specific)               ║
 ║                                                                  ║
