@@ -14,7 +14,7 @@ Each agent shows up as a `drydock:<skill>` skill. (Throughout these docs, "agent
 
 ```text
 /plugin marketplace add sundarshahi/drydock
-/plugin install drydock
+/plugin install drydock@drydock
 ```
 
 This registers the skills, hooks, and shared protocols. No local clone required.
