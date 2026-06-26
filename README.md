@@ -281,6 +281,12 @@ Run a single phase or skip one — useful for iterating on an existing project:
 
 ---
 
+## Roadmap
+
+Where Drydock is headed — MCP grounding, LSP-over-MCP code intelligence, per-agent model tiering, and pipeline ergonomics — is tracked in [ROADMAP.md](ROADMAP.md).
+
+---
+
 ## License
 
 MIT
