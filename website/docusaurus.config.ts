@@ -7,7 +7,18 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Drydock',
   tagline: 'An idea-to-launch product team for Claude Code',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
+
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {rel: 'apple-touch-icon', href: '/img/favicon.png'},
+    },
+    {
+      tagName: 'link',
+      attributes: {rel: 'icon', type: 'image/png', sizes: '180x180', href: '/img/favicon.png'},
+    },
+  ],
 
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
@@ -54,6 +65,7 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: 'img/drydock-social-card.png',
     metadata: [
       {name: 'keywords', content: 'claude code, plugin, ai agents, multi-agent, devops, security, owasp, vapt, compliance, ci-cd, idea to launch'},
     ],
@@ -62,6 +74,12 @@ const config: Config = {
     },
     navbar: {
       title: 'Drydock',
+      logo: {
+        alt: 'Drydock',
+        src: 'img/logo.svg',
+        width: 30,
+        height: 30,
+      },
       items: [
         {
           type: 'docSidebar',
