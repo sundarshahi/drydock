@@ -2,6 +2,10 @@
 
 **From a one-line idea to a launched product — a team of 19 specialized AI agents, orchestrated inside Claude Code.**
 
+[![Docs](https://img.shields.io/badge/docs-drydock.sundarshahithakuri.com.np-2e8555?logo=readthedocs&logoColor=white)](https://drydock.sundarshahithakuri.com.np) [![Release](https://img.shields.io/github/v/release/sundarshahi/drydock?color=2e8555)](https://github.com/sundarshahi/drydock/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](https://github.com/sundarshahi/drydock/blob/main/LICENSE)
+
+📖 **Full documentation:** **[drydock.sundarshahithakuri.com.np](https://drydock.sundarshahithakuri.com.np)** — install, the pipeline, the 19-agent roster, modes, and security.
+
 Drydock turns Claude Code into a full product team. You describe what you want in plain English; a single orchestrator routes the work to 19 specialized agents — product, architecture, UX design, backend, frontend, QA, security, DevOps, SRE, compliance, docs, and go-to-market (marketing/growth, sales, customer success) — that research, build, test, secure, document, and launch a real system. You stay in the strategist's seat and approve at three checkpoints; the agents do the work in between.
 
 Each agent shows up as a `drydock:<skill>` skill. (Throughout these docs, "agent" and "skill" mean the same thing: a specialized worker the orchestrator routes to.)
